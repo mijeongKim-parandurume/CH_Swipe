@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>천상열차분야지도 - Celestial Chart Interactive Experience</title>
+    <meta name="description" content="조선시대 천문도의 6단계 레이어를 스와이프로 탐험하세요">
+
+    <!-- Preload critical assets -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:,">
+
+    <!-- Import map for Three.js modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <!-- MediaPipe imports -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <h1>천상열차분야지도</h1>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loading-progress"></div>
+            </div>
+            <p class="loading-text" id="loading-text">에셋 로딩 중...</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div id="app-container" class="app-container hidden">
+        <!-- Three.js Canvas -->
+        <canvas id="canvas" class="webgl-canvas"></canvas>
+
+        <!-- Side Panel -->
+        <aside id="info-panel" class="info-panel">
+            <button class="panel-toggle" id="panel-toggle" aria-label="패널 열기/닫기">
+                <span class="toggle-icon">◀</span>
+            </button>
+            <div class="panel-content">
+                <h2 id="panel-title" class="panel-title">천상열차분야지도</h2>
+                <div id="panel-description" class="panel-description">
+                    스와이프하여 천문도의 각 단계를 탐험하세요
+                </div>
+            </div>
+        </aside>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-markers">
+                <div class="progress-marker" data-stage="1" aria-label="1단계: 별">
+                    <div class="marker-dot"></div>
+                    <div class="marker-label">별</div>
+                </div>
+                <div class="progress-marker" data-stage="2" aria-label="2단계: 별자리">
+                    <div class="marker-dot"></div>
+                    <div class="marker-label">별자리</div>
+                </div>
+                <div class="progress-marker" data-stage="3" aria-label="3단계: 자미원">
+                    <div class="marker-dot"></div>
+                    <div class="marker-label">자미원</div>
+                </div>
+                <div class="progress-marker" data-stage="4" aria-label="4단계: 적도">
+                    <div class="marker-dot"></div>
+                    <div class="marker-label">적도</div>
+                </div>
+                <div class="progress-marker" data-stage="5" aria-label="5단계: 황도">
+                    <div class="marker-dot"></div>
+                    <div class="marker-label">황도</div>
+                </div>
+                <div class="progress-marker" data-stage="6" aria-label="6단계: 은하수">
+                    <div class="marker-dot"></div>
+                    <div class="marker-label">은하수</div>
+                </div>
+            </div>
+            <div class="progress-line">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <!-- Controls Hint -->
+        <div class="controls-hint" id="controls-hint">
+            <div class="hint-content">
+                <p class="hint-desktop">
+                    <strong>컨트롤:</strong>
+                    마우스 드래그로 회전 |
+                    휠로 확대/축소 |
+                    키보드 ← → 로 단계 이동 |
+                    하단 마커 클릭으로 바로가기
+                </p>
+                <p class="hint-mobile">
+                    좌우 스와이프로 단계 이동 |
+                    두 손가락으로 회전/확대
+                </p>
+            </div>
+        </div>
+
+        <!-- Season CTA (shown after stage 6) -->
+        <div class="season-cta hidden" id="season-cta">
+            <div class="cta-content">
+                <h3>사계절 별자리 탐험</h3>
+                <p>
+                    천상열차분야지도는 단순한 별자리 배열도가 아니라,
+                    동·서·남·북의 <strong>28수 체계(사방칠수)</strong>를 통해
+                    시간과 방위의 하늘을 함께 담고 있다.
+                </p>
+                <button class="cta-button" id="season-button">
+                    사계절 별자리로 이동
+                </button>
+            </div>
+        </div>
+
+        <!-- Accessibility Controls -->
+        <div class="accessibility-controls">
+            <button class="accessibility-button" id="font-size-increase"
+                    aria-label="글자 크기 증가" title="글자 크기 증가">
+                A+
+            </button>
+            <button class="accessibility-button" id="font-size-decrease"
+                    aria-label="글자 크기 감소" title="글자 크기 감소">
+                A-
+            </button>
+        </div>
+
+        <!-- Hand Gesture Controls -->
+        <div class="hand-gesture-panel" id="hand-gesture-panel">
+            <button class="gesture-toggle" id="gesture-toggle" aria-label="손 제스처 켜기/끄기">
+                <span class="gesture-icon">✋</span>
+            </button>
+            <div class="gesture-content hidden" id="gesture-content">
+                <h3>손 제스처 컨트롤</h3>
+                <div class="camera-select">
+                    <label for="camera-select">카메라:</label>
+                    <select id="camera-select"></select>
+                </div>
+                <div class="gesture-status">
+                    <p id="gesture-status-text">카메라를 활성화하세요</p>
+                    <p id="hand-position-text"></p>
+                </div>
+                <div class="gesture-guide">
+                    <h4>제스처 가이드:</h4>
+                    <ul>
+                        <li><strong>검지 펴기 (Pointing):</strong> 손을 좌우로 움직여 단계 이동</li>
+                        <li><strong>주먹 쥐기 (Fist):</strong> 손을 움직여 물체 회전</li>
+                        <li><strong>양손 주먹 (Two Fists):</strong> 줌인/줌아웃</li>
+                    </ul>
+                </div>
+                <div class="video-preview">
+                    <video id="hand-video" width="320" height="240" style="display: none;" autoplay></video>
+                    <canvas id="hand-canvas" width="320" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="gesture-handler.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

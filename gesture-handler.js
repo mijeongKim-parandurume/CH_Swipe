@@ -1,0 +1,409 @@
+/**
+ * Gesture Handler - MediaPipe Hands Integration
+ * Based on original mediapipe.js
+ */
+
+// ===== State Variables =====
+let hands = null;
+let videoElement = null;
+let canvasElement = null;
+let canvasCtx = null;
+let detectedHands = [];
+let gestureCallbacks = {
+    onSwipe: null,
+    onRotate: null,
+    onZoom: null,
+    onStatusUpdate: null
+};
+
+// ===== Helper Functions =====
+function distanceBetweenPoints(a, b) {
+    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2));
+}
+
+function detectGestures(landmarks) {
+    const gestures = [];
+    const thumbTip = landmarks[4];
+    const indexTip = landmarks[8];
+    const middleTip = landmarks[12];
+    const ringTip = landmarks[16];
+    const pinkyTip = landmarks[20];
+    const wrist = landmarks[0];
+
+    // Pointing (index finger extended)
+    if (distanceBetweenPoints(indexTip, wrist) > 0.15 &&
+        distanceBetweenPoints(middleTip, wrist) < 0.1 &&
+        distanceBetweenPoints(ringTip, wrist) < 0.1 &&
+        distanceBetweenPoints(pinkyTip, wrist) < 0.1) {
+        gestures.push('Pointing');
+    }
+
+    // Closed fist
+    if (distanceBetweenPoints(indexTip, wrist) < 0.1 &&
+        distanceBetweenPoints(middleTip, wrist) < 0.1 &&
+        distanceBetweenPoints(ringTip, wrist) < 0.1 &&
+        distanceBetweenPoints(pinkyTip, wrist) < 0.1) {
+        gestures.push('Closed fist');
+    }
+
+    // Open hand
+    if (distanceBetweenPoints(thumbTip, wrist) > 0.1 &&
+        distanceBetweenPoints(indexTip, wrist) > 0.15 &&
+        distanceBetweenPoints(middleTip, wrist) > 0.15 &&
+        distanceBetweenPoints(ringTip, wrist) > 0.15 &&
+        distanceBetweenPoints(pinkyTip, wrist) > 0.15) {
+        gestures.push('Open hand');
+    }
+
+    // Victory sign
+    if (distanceBetweenPoints(indexTip, wrist) > 0.15 &&
+        distanceBetweenPoints(middleTip, wrist) > 0.15 &&
+        distanceBetweenPoints(ringTip, wrist) < 0.1 &&
+        distanceBetweenPoints(pinkyTip, wrist) < 0.1) {
+        gestures.push('Victory');
+    }
+
+    return gestures;
+}
+
+// ===== Drawing Functions =====
+function drawHand(detectedHand) {
+    if (!window.drawConnectors || !window.drawLandmarks) return;
+
+    window.drawConnectors(canvasCtx, detectedHand.landmarks, window.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 3 });
+    window.drawLandmarks(canvasCtx, detectedHand.landmarks, { color: '#FF0000', lineWidth: 2 });
+
+    // Draw center point
+    canvasCtx.beginPath();
+    canvasCtx.arc(detectedHand.canvasX * canvasElement.width,
+                  detectedHand.canvasY * canvasElement.height, 5, 0, 2 * Math.PI);
+    canvasCtx.fillStyle = '#4a9eff';
+    canvasCtx.fill();
+    canvasCtx.closePath();
+}
+
+function drawHands(hands) {
+    if (!canvasCtx) return;
+
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    // Draw video frame (mirrored)
+    if (videoElement && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+        canvasCtx.translate(canvasElement.width, 0);
+        canvasCtx.scale(-1, 1);
+        canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    // Draw hands
+    for (let i = 0; i < hands.length; i++) {
+        drawHand(hands[i]);
+    }
+
+    canvasCtx.restore();
+}
+
+// ===== MediaPipe Results Processing =====
+function onResultsHands(results) {
+    let currentlyDetectedHands = [];
+
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+            const landmarks = results.multiHandLandmarks[i];
+            const worldLandmarks = results.multiHandWorldLandmarks[i];
+
+            // Calculate hand center
+            let canvasX = 0;
+            let canvasY = 0;
+            landmarks.forEach(element => {
+                canvasX += element.x;
+                canvasY += element.y;
+            });
+            canvasX = canvasX / landmarks.length;
+            canvasY = canvasY / landmarks.length;
+
+            // Normalized coordinates
+            let x = 1 - 2 * canvasX;
+            let y = (1 - 2 * canvasY);
+
+            const gestures = detectGestures(worldLandmarks);
+
+            currentlyDetectedHands.push({
+                landmarks,
+                worldLandmarks,
+                label: results.multiHandedness[i].label,
+                x,
+                y,
+                canvasX,
+                canvasY,
+                gestures
+            });
+        }
+    }
+
+    // Update detected hands with previous positions
+    if (currentlyDetectedHands.length === 0) {
+        detectedHands = [];
+    } else if (currentlyDetectedHands.length === 1) {
+        let hand = currentlyDetectedHands[0];
+        if (detectedHands.length === 0) {
+            detectedHands.push({
+                ...hand,
+                prevX: hand.x,
+                prevY: hand.y
+            });
+        } else if (detectedHands.length >= 1) {
+            let closestIndex = 0;
+            if (detectedHands.length > 1) {
+                closestIndex = distanceBetweenPoints(hand, detectedHands[0]) <
+                              distanceBetweenPoints(hand, detectedHands[1]) ? 0 : 1;
+            }
+            detectedHands = [{
+                ...hand,
+                prevX: detectedHands[closestIndex].x,
+                prevY: detectedHands[closestIndex].y
+            }];
+        }
+    } else if (currentlyDetectedHands.length === 2) {
+        let hand1 = currentlyDetectedHands[0];
+        let hand2 = currentlyDetectedHands[1];
+
+        if (detectedHands.length === 0) {
+            detectedHands.push({
+                ...hand1,
+                prevX: hand1.x,
+                prevY: hand1.y
+            });
+            detectedHands.push({
+                ...hand2,
+                prevX: hand2.x,
+                prevY: hand2.y
+            });
+        } else if (detectedHands.length === 1) {
+            if (distanceBetweenPoints(hand1, detectedHands[0]) <
+                distanceBetweenPoints(hand2, detectedHands[0])) {
+                detectedHands[0] = {
+                    ...hand1,
+                    prevX: detectedHands[0].x,
+                    prevY: detectedHands[0].y
+                };
+                detectedHands.push({
+                    ...hand2,
+                    prevX: hand2.x,
+                    prevY: hand2.y
+                });
+            } else {
+                detectedHands[0] = {
+                    ...hand2,
+                    prevX: detectedHands[0].x,
+                    prevY: detectedHands[0].y
+                };
+                detectedHands.push({
+                    ...hand1,
+                    prevX: hand1.x,
+                    prevY: hand1.y
+                });
+            }
+        } else if (detectedHands.length === 2) {
+            if (distanceBetweenPoints(hand1, detectedHands[0]) +
+                distanceBetweenPoints(hand2, detectedHands[1]) <
+                distanceBetweenPoints(hand2, detectedHands[0]) +
+                distanceBetweenPoints(hand1, detectedHands[1])) {
+                detectedHands[0] = {
+                    ...hand1,
+                    prevX: detectedHands[0].x,
+                    prevY: detectedHands[0].y
+                };
+                detectedHands[1] = {
+                    ...hand2,
+                    prevX: detectedHands[1].x,
+                    prevY: detectedHands[1].y
+                };
+            } else {
+                detectedHands[0] = {
+                    ...hand2,
+                    prevX: detectedHands[0].x,
+                    prevY: detectedHands[0].y
+                };
+                detectedHands[1] = {
+                    ...hand1,
+                    prevX: detectedHands[1].x,
+                    prevY: detectedHands[1].y
+                };
+            }
+        }
+    }
+
+    // Draw hands
+    drawHands(detectedHands);
+
+    // Process gestures
+    processHandGestures(detectedHands);
+}
+
+// ===== Gesture Processing =====
+function processHandGestures(hands) {
+    let isSwipe = false;
+
+    // Update status
+    if (gestureCallbacks.onStatusUpdate) {
+        if (hands.length > 0) {
+            const gestures = hands.map(h => h.gestures.join(', ')).join(' | ');
+            gestureCallbacks.onStatusUpdate(`손 감지됨: ${hands.length}개 - ${gestures}`);
+        } else {
+            gestureCallbacks.onStatusUpdate('손이 감지되지 않음');
+        }
+    }
+
+    if (hands.length === 1) {
+        const hand = hands[0];
+
+        // Pointing gesture for swipe
+        if (hand.gestures.includes('Pointing')) {
+            if (gestureCallbacks.onSwipe) {
+                gestureCallbacks.onSwipe((hand.x - hand.prevX) * 2);
+            }
+            isSwipe = true;
+        }
+
+        // Closed fist for rotation
+        if (hand.gestures.includes('Closed fist')) {
+            if (gestureCallbacks.onRotate) {
+                gestureCallbacks.onRotate(
+                    (hand.prevY - hand.y) * 5,
+                    (hand.x - hand.prevX) * 5,
+                    0
+                );
+            }
+        }
+    } else if (hands.length === 2) {
+        const hand1 = hands[0];
+        const hand2 = hands[1];
+
+        // Two fists for zoom
+        if (hand1.gestures.includes('Closed fist') &&
+            hand2.gestures.includes('Closed fist') &&
+            hand1.label !== hand2.label) {
+            const distance = Math.sqrt(Math.pow(hand1.x - hand2.x, 2) +
+                                      Math.pow(hand1.y - hand2.y, 2));
+            const prevDistance = Math.sqrt(Math.pow(hand1.prevX - hand2.prevX, 2) +
+                                          Math.pow(hand1.prevY - hand2.prevY, 2));
+
+            if (gestureCallbacks.onZoom) {
+                gestureCallbacks.onZoom(distance / prevDistance);
+            }
+        }
+    }
+
+    // Reset swipe if not swiping
+    if (!isSwipe && gestureCallbacks.onSwipe) {
+        gestureCallbacks.onSwipe(0);
+    }
+}
+
+// ===== Public API =====
+window.GestureHandler = {
+    init: async function(callbacks) {
+        gestureCallbacks = { ...gestureCallbacks, ...callbacks };
+
+        // Get elements
+        videoElement = document.getElementById('hand-video');
+        canvasElement = document.getElementById('hand-canvas');
+
+        if (!videoElement || !canvasElement) {
+            console.error('Video or canvas element not found');
+            return false;
+        }
+
+        canvasCtx = canvasElement.getContext('2d');
+
+        // Wait for MediaPipe to load
+        await new Promise(resolve => {
+            const checkInterval = setInterval(() => {
+                if (typeof window.Hands !== 'undefined') {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 100);
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                resolve();
+            }, 10000);
+        });
+
+        if (typeof window.Hands === 'undefined') {
+            console.error('MediaPipe Hands not loaded');
+            return false;
+        }
+
+        // Initialize MediaPipe Hands
+        try {
+            hands = new window.Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onResultsHands);
+
+            console.log('GestureHandler initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing GestureHandler:', error);
+            return false;
+        }
+    },
+
+    startCamera: async function(deviceId = null) {
+        if (!videoElement) return false;
+
+        try {
+            const constraints = {
+                video: deviceId ? { deviceId: { exact: deviceId } } : true
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = stream;
+
+            // Process frames
+            const processFrame = async () => {
+                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA && hands) {
+                    await hands.send({ image: videoElement });
+                }
+                requestAnimationFrame(processFrame);
+            };
+            processFrame();
+
+            return true;
+        } catch (error) {
+            console.error('Error starting camera:', error);
+            return false;
+        }
+    },
+
+    stopCamera: function() {
+        if (videoElement && videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+        }
+        detectedHands = [];
+    },
+
+    getCameraList: async function() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.filter(device => device.kind === 'videoinput');
+        } catch (error) {
+            console.error('Error getting camera list:', error);
+            return [];
+        }
+    }
+};

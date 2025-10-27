@@ -522,8 +522,8 @@ async function setupHandGestureControls() {
 
 // ===== Hand Gesture Callbacks =====
 function handleGestureSwipe(deltaX) {
+    // Apply decay when no active swipe
     if (deltaX === 0) {
-        // Reset accumulator when no swipe
         handSwipeAccumulator *= 0.9;
         if (Math.abs(handSwipeAccumulator) < 1) {
             handSwipeAccumulator = 0;
@@ -531,25 +531,28 @@ function handleGestureSwipe(deltaX) {
         return;
     }
 
+    // Accumulate swipe movement
     handSwipeAccumulator += deltaX * 100;
 
     // Check threshold for stage change
     if (Math.abs(handSwipeAccumulator) > SWIPE_THRESHOLD) {
         if (handSwipeAccumulator > 0) {
             // Swipe right -> next stage
-            if (currentStage < 6) {
+            if (currentStage < 6 && !isAnimating) {
                 goToStage(currentStage + 1);
+                handSwipeAccumulator = 0; // Reset after successful stage change
             } else if (currentStage === 6) {
                 seasonCTA.classList.remove('hidden');
+                handSwipeAccumulator = 0; // Reset after showing CTA
             }
         } else {
             // Swipe left -> previous stage
-            if (currentStage > 1) {
+            if (currentStage > 1 && !isAnimating) {
                 goToStage(currentStage - 1);
                 seasonCTA.classList.add('hidden');
+                handSwipeAccumulator = 0; // Reset after successful stage change
             }
         }
-        handSwipeAccumulator = 0;
     }
 }
 
@@ -559,8 +562,8 @@ function handleGestureRotate(deltaX, deltaY, deltaZ) {
     // Temporarily disable OrbitControls
     orbitControls.enabled = false;
 
-    // Apply rotation to camera
-    const rotationSpeed = 0.01;
+    // Apply rotation to camera with increased sensitivity
+    const rotationSpeed = 0.05; // Increased from 0.01 to 0.05 (5x more sensitive)
     camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), deltaY * rotationSpeed);
     camera.position.applyAxisAngle(new THREE.Vector3(1, 0, 0), deltaX * rotationSpeed);
     camera.lookAt(scene.position);

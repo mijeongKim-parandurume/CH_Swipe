@@ -25,41 +25,48 @@ function detectGestures(landmarks) {
     const gestures = [];
     const thumbTip = landmarks[4];
     const indexTip = landmarks[8];
+    const indexMCP = landmarks[5]; // Index finger base
     const middleTip = landmarks[12];
     const ringTip = landmarks[16];
     const pinkyTip = landmarks[20];
     const wrist = landmarks[0];
 
-    // Pointing (index finger extended)
-    if (distanceBetweenPoints(indexTip, wrist) > 0.15 &&
-        distanceBetweenPoints(middleTip, wrist) < 0.1 &&
-        distanceBetweenPoints(ringTip, wrist) < 0.1 &&
-        distanceBetweenPoints(pinkyTip, wrist) < 0.1) {
+    // Calculate distances
+    const indexDist = distanceBetweenPoints(indexTip, wrist);
+    const middleDist = distanceBetweenPoints(middleTip, wrist);
+    const ringDist = distanceBetweenPoints(ringTip, wrist);
+    const pinkyDist = distanceBetweenPoints(pinkyTip, wrist);
+
+    // Pointing (index finger extended, others folded) - relaxed conditions
+    if (indexDist > 0.13 &&
+        indexDist > middleDist + 0.03 &&
+        indexDist > ringDist + 0.03 &&
+        indexDist > pinkyDist + 0.03) {
         gestures.push('Pointing');
     }
 
-    // Closed fist
-    if (distanceBetweenPoints(indexTip, wrist) < 0.1 &&
-        distanceBetweenPoints(middleTip, wrist) < 0.1 &&
-        distanceBetweenPoints(ringTip, wrist) < 0.1 &&
-        distanceBetweenPoints(pinkyTip, wrist) < 0.1) {
+    // Closed fist - all fingers close to wrist
+    if (indexDist < 0.12 &&
+        middleDist < 0.12 &&
+        ringDist < 0.12 &&
+        pinkyDist < 0.12) {
         gestures.push('Closed fist');
     }
 
-    // Open hand
+    // Open hand - all fingers extended
     if (distanceBetweenPoints(thumbTip, wrist) > 0.1 &&
-        distanceBetweenPoints(indexTip, wrist) > 0.15 &&
-        distanceBetweenPoints(middleTip, wrist) > 0.15 &&
-        distanceBetweenPoints(ringTip, wrist) > 0.15 &&
-        distanceBetweenPoints(pinkyTip, wrist) > 0.15) {
+        indexDist > 0.15 &&
+        middleDist > 0.15 &&
+        ringDist > 0.15 &&
+        pinkyDist > 0.15) {
         gestures.push('Open hand');
     }
 
-    // Victory sign
-    if (distanceBetweenPoints(indexTip, wrist) > 0.15 &&
-        distanceBetweenPoints(middleTip, wrist) > 0.15 &&
-        distanceBetweenPoints(ringTip, wrist) < 0.1 &&
-        distanceBetweenPoints(pinkyTip, wrist) < 0.1) {
+    // Victory sign - index and middle extended, ring and pinky folded
+    if (indexDist > 0.15 &&
+        middleDist > 0.15 &&
+        ringDist < 0.12 &&
+        pinkyDist < 0.12) {
         gestures.push('Victory');
     }
 
@@ -88,18 +95,19 @@ function drawHands(hands) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // Draw video frame (mirrored)
+    // Draw video frame (no mirroring)
     if (videoElement && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-        canvasCtx.translate(canvasElement.width, 0);
-        canvasCtx.scale(-1, 1);
         canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-        canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
-    // Draw hands
+    // Draw hands (need to mirror hand landmarks for display)
+    canvasCtx.save();
+    canvasCtx.translate(canvasElement.width, 0);
+    canvasCtx.scale(-1, 1);
     for (let i = 0; i < hands.length; i++) {
         drawHand(hands[i]);
     }
+    canvasCtx.restore();
 
     canvasCtx.restore();
 }
@@ -261,8 +269,9 @@ function processHandGestures(hands) {
 
         // Pointing gesture for swipe
         if (hand.gestures.includes('Pointing')) {
+            const swipeDelta = (hand.x - hand.prevX) * 2;
             if (gestureCallbacks.onSwipe) {
-                gestureCallbacks.onSwipe((hand.x - hand.prevX) * 2);
+                gestureCallbacks.onSwipe(swipeDelta);
             }
             isSwipe = true;
         }
@@ -271,8 +280,8 @@ function processHandGestures(hands) {
         if (hand.gestures.includes('Closed fist')) {
             if (gestureCallbacks.onRotate) {
                 gestureCallbacks.onRotate(
-                    (hand.prevY - hand.y) * 5,
-                    (hand.x - hand.prevX) * 5,
+                    (hand.prevY - hand.y) * 15, // Increased from 5 to 15 (3x more sensitive)
+                    (hand.x - hand.prevX) * 15,  // Increased from 5 to 15 (3x more sensitive)
                     0
                 );
             }
@@ -348,8 +357,8 @@ window.GestureHandler = {
             hands.setOptions({
                 maxNumHands: 2,
                 modelComplexity: 1,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
             });
 
             hands.onResults(onResultsHands);

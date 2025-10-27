@@ -269,7 +269,8 @@ function processHandGestures(hands) {
 
         // Pointing gesture for swipe
         if (hand.gestures.includes('Pointing')) {
-            const swipeDelta = (hand.x - hand.prevX) * 2;
+            // Invert direction: left-to-right = positive (next), right-to-left = negative (prev)
+            const swipeDelta = (hand.prevX - hand.x) * 2;
             if (gestureCallbacks.onSwipe) {
                 gestureCallbacks.onSwipe(swipeDelta);
             }

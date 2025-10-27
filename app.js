@@ -264,8 +264,7 @@ function setupEventListeners() {
 
     // Season CTA button
     document.getElementById('season-button').addEventListener('click', () => {
-        alert('사계절 별자리 페이지로 이동합니다.');
-        // TODO: Implement navigation to seasons page
+        window.location.href = 'https://starmap.paranduru.me/';
     });
 }
 
@@ -319,8 +318,19 @@ function updateSwipeProgress() {
 
     // Check if trying to swipe right from stage 6
     if (currentStage === 6 && normalizedSwipe > 0.5) {
-        // Show season CTA instead of going to next stage
-        seasonCTA.classList.remove('hidden');
+        // Show season CTA if not already shown
+        if (seasonCTA.classList.contains('hidden')) {
+            seasonCTA.classList.remove('hidden');
+            swipeAccumulator = 0;
+            velocity = 0;
+            return;
+        } else {
+            // CTA already shown, navigate to seasons page on additional right swipe
+            if (normalizedSwipe > 1.0) {
+                window.location.href = 'https://starmap.paranduru.me/';
+                return;
+            }
+        }
         swipeAccumulator = 0;
         velocity = 0;
         return;
@@ -542,8 +552,15 @@ function handleGestureSwipe(deltaX) {
                 goToStage(currentStage + 1);
                 handSwipeAccumulator = 0; // Reset after successful stage change
             } else if (currentStage === 6) {
-                seasonCTA.classList.remove('hidden');
-                handSwipeAccumulator = 0; // Reset after showing CTA
+                // At stage 6, check if CTA is already shown
+                if (seasonCTA.classList.contains('hidden')) {
+                    // First right swipe: show CTA
+                    seasonCTA.classList.remove('hidden');
+                    handSwipeAccumulator = 0; // Reset after showing CTA
+                } else {
+                    // CTA already shown, second right swipe: navigate to seasons page
+                    window.location.href = 'https://starmap.paranduru.me/';
+                }
             }
         } else {
             // Swipe left -> previous stage

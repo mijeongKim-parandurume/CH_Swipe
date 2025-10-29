@@ -111,6 +111,23 @@
             </div>
         </div>
 
+        <!-- Quiz Container -->
+        <div class="quiz-container hidden" id="quiz-container">
+            <div class="quiz-content">
+                <h3 class="quiz-question" id="quiz-question">질문이 여기에 표시됩니다</h3>
+                <p class="quiz-hint" id="quiz-hint">힌트가 여기에 표시됩니다</p>
+                <div class="quiz-feedback" id="quiz-feedback"></div>
+                <div class="quiz-controls">
+                    <button class="quiz-btn" id="quiz-narration-toggle" aria-label="음성 재생/정지">
+                        🔊 음성
+                    </button>
+                    <button class="quiz-btn skip-btn" id="quiz-skip" aria-label="건너뛰기">
+                        건너뛰기
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Season CTA (shown after stage 6) -->
         <div class="season-cta hidden" id="season-cta">
             <div class="cta-content">
@@ -171,6 +188,10 @@
     </div>
 
     <!-- Scripts -->
+    <script src="audio-narrator.js"></script>
+    <script src="gesture-detector.js"></script>
+    <script src="feedback-effects.js"></script>
+    <script src="quiz-system.js"></script>
     <script src="gesture-handler.js"></script>
     <script type="module" src="app.js"></script>
 </body>

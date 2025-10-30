@@ -32,6 +32,14 @@ let velocity = 0;
 const SWIPE_THRESHOLD = 50;
 const INERTIA_DAMPING = 0.92;
 
+// Gesture detection for quiz
+let gestureStartTime = 0;
+let initialTouchDistance = 0;
+let currentTouchDistance = 0;
+let maxPinchScale = 1.0;
+let touchPath = [];
+let isPinchDetected = false;
+
 // ===== Animation =====
 let animationStartTime = 0;
 let animationDuration = 0;
@@ -52,6 +60,11 @@ let isGestureEnabled = false;
 // Hand gesture swipe accumulator
 let handSwipeAccumulator = 0;
 
+// Quiz System
+let quizSystem = null;
+let quizContainer, quizQuestion, quizHint, quizFeedback;
+let quizNarrationToggle, quizSkip;
+
 // ===== Initialization =====
 async function init() {
     try {
@@ -67,6 +80,9 @@ async function init() {
 
         // Load all GLB models
         await loadAllModels();
+
+        // Initialize Quiz System
+        initQuizSystem();
 
         // Setup event listeners
         setupEventListeners();
@@ -110,6 +126,14 @@ function initUIElements() {
     gestureStatusText = document.getElementById('gesture-status-text');
     handPositionText = document.getElementById('hand-position-text');
     cameraSelect = document.getElementById('camera-select');
+
+    // Quiz elements
+    quizContainer = document.getElementById('quiz-container');
+    quizQuestion = document.getElementById('quiz-question');
+    quizHint = document.getElementById('quiz-hint');
+    quizFeedback = document.getElementById('quiz-feedback');
+    quizNarrationToggle = document.getElementById('quiz-narration-toggle');
+    quizSkip = document.getElementById('quiz-skip');
 }
 
 // ===== Three.js Initialization =====
@@ -266,25 +290,144 @@ function setupEventListeners() {
     document.getElementById('season-button').addEventListener('click', () => {
         window.location.href = 'https://starmap.paranduru.me/';
     });
+
+    // Quiz buttons
+    setupQuizEventListeners();
+}
+
+// ===== Quiz System Initialization =====
+function initQuizSystem() {
+    console.log('🎮 Initializing Quiz System...');
+
+    if (!window.QuizSystem) {
+        console.error('❌ QuizSystem not loaded! Check if quiz-system.js is loaded correctly.');
+        return;
+    }
+
+    console.log('✅ QuizSystem class found');
+
+    quizSystem = new QuizSystem(config, {
+        maxAttempts: 3,
+        onQuizComplete: handleQuizComplete,
+        onQuizStart: handleQuizStart
+    });
+
+    console.log('✅ QuizSystem instance created');
+
+    quizSystem.init({
+        quizContainer: quizContainer,
+        questionElement: quizQuestion,
+        hintElement: quizHint,
+        feedbackElement: quizFeedback,
+        canvasElement: canvas
+    });
+
+    console.log('✅ QuizSystem initialized with UI elements:', {
+        quizContainer: !!quizContainer,
+        questionElement: !!quizQuestion,
+        hintElement: !!quizHint,
+        feedbackElement: !!quizFeedback,
+        canvasElement: !!canvas
+    });
+}
+
+// ===== Quiz Event Listeners =====
+function setupQuizEventListeners() {
+    if (!quizNarrationToggle || !quizSkip) return;
+
+    // Narration toggle
+    quizNarrationToggle.addEventListener('click', () => {
+        if (quizSystem) {
+            quizSystem.toggleNarration();
+        }
+    });
+
+    // Skip button
+    quizSkip.addEventListener('click', () => {
+        if (quizSystem) {
+            quizSystem.skipQuiz();
+        }
+    });
+}
+
+// ===== Quiz Callbacks =====
+function handleQuizStart(stage) {
+    console.log(`Quiz started for stage ${stage}`);
+    // Quiz system will handle blocking navigation
+}
+
+function handleQuizComplete(stage, isCorrect) {
+    console.log(`Quiz completed for stage ${stage}, correct: ${isCorrect}`);
+
+    // Show completion effect for final stage
+    if (stage === 6 && isCorrect) {
+        const feedback = new FeedbackEffects();
+        feedback.showCompletionEffect(canvas);
+    }
+
+    // Allow user to explore before moving to next stage
+    // User can manually swipe to next stage
 }
 
 // ===== Swipe Gesture Setup =====
 function setupSwipeGestures() {
+    console.log('🎮 Setting up touch event listeners on canvas...');
+
     // Touch events only (no mouse swipe to avoid conflict with OrbitControls)
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    console.log('✅ Touch event listeners registered:', {
+        canvas: canvas,
+        canvasId: canvas.id,
+        hasListeners: true
+    });
 
     // Mouse is dedicated to OrbitControls only (rotation, zoom)
     // No mouse swipe functionality
 }
 
 function handleTouchStart(e) {
+    gestureStartTime = Date.now();
+    touchPath = [];
+    isPinchDetected = false;
+    maxPinchScale = 1.0;
+
+    console.log('👆 Touch START:', {
+        touches: e.touches.length,
+        quizActive: quizSystem?.isQuizActive,
+        currentStage: currentStage
+    });
+
+    // If quiz is active, disable OrbitControls immediately for ALL touches
+    if (quizSystem?.isQuizActive && orbitControls && orbitControls.enabled) {
+        orbitControls.enabled = false;
+        console.log('🚫 OrbitControls disabled for quiz (touchstart)');
+        e.preventDefault(); // Prevent default to ensure we capture the event
+    }
+
     if (e.touches.length === 1) {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         lastTouchX = e.touches[0].clientX;
         velocity = 0;
+
+        // Record touch path for circle detection
+        touchPath.push({
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            time: Date.now()
+        });
+
+        console.log('👆 Single touch at:', e.touches[0].clientX.toFixed(0), e.touches[0].clientY.toFixed(0));
+    } else if (e.touches.length === 2) {
+        // Two finger gesture - for pinch detection
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        initialTouchDistance = Math.sqrt(dx * dx + dy * dy);
+        currentTouchDistance = initialTouchDistance;
+        console.log('🖐️ Two finger touch started, initial distance:', initialTouchDistance);
     }
 }
 
@@ -293,10 +436,23 @@ function handleTouchMove(e) {
         const touchX = e.touches[0].clientX;
         const touchY = e.touches[0].clientY;
 
+        // Always record touch path (for quiz gesture detection)
+        touchPath.push({
+            x: touchX,
+            y: touchY,
+            time: Date.now()
+        });
+
         const deltaX = touchX - lastTouchX;
         const deltaY = Math.abs(touchY - touchStartY);
 
-        // Only handle horizontal swipes
+        // If quiz is active, prevent all default behavior and don't navigate
+        if (quizSystem?.isQuizActive) {
+            e.preventDefault(); // Prevent scrolling and other default behaviors
+            return; // Just record path, don't navigate
+        }
+
+        // Only handle horizontal swipes for stage navigation (not quiz)
         if (Math.abs(deltaX) > deltaY) {
             e.preventDefault();
             velocity = deltaX;
@@ -305,11 +461,247 @@ function handleTouchMove(e) {
             swipeAccumulator += deltaX;
             updateSwipeProgress();
         }
+    } else if (e.touches.length === 2) {
+        // Two finger gesture - track pinch
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        currentTouchDistance = Math.sqrt(dx * dx + dy * dy);
+
+        if (initialTouchDistance > 0) {
+            const scale = currentTouchDistance / initialTouchDistance;
+            maxPinchScale = Math.max(maxPinchScale, scale);
+
+            console.log('📏 Pinch scale:', scale.toFixed(2), 'max:', maxPinchScale.toFixed(2));
+
+            // If quiz is active and pinch out detected
+            if (quizSystem?.isQuizActive && scale > 1.2 && !isPinchDetected) {
+                isPinchDetected = true;
+                console.log('✅ Pinch OUT detected during move! Scale:', scale);
+                quizSystem.handlePinch({ type: 'pinch', scale: scale, direction: 'out' });
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
     }
 }
 
 function handleTouchEnd(e) {
+    const gestureDuration = Date.now() - gestureStartTime;
+
+    console.log('🏁 Touch ended:', {
+        duration: gestureDuration,
+        touchPathLength: touchPath.length,
+        quizActive: quizSystem?.isQuizActive,
+        remainingTouches: e.touches.length
+    });
+
+    // Re-enable OrbitControls if it was disabled
+    if (orbitControls && !orbitControls.enabled) {
+        orbitControls.enabled = true;
+        console.log('✅ OrbitControls re-enabled');
+    }
+
+    // If quiz is active, analyze gesture and pass to quiz system
+    if (quizSystem && quizSystem.isQuizActive) {
+        console.log('🎯 Quiz is active, analyzing gesture...');
+
+        // Prevent default behavior
+        e.preventDefault();
+        e.stopPropagation();
+
+        // If pinch was already detected in touchmove, don't analyze again
+        if (!isPinchDetected) {
+            analyzeGestureForQuiz(e, gestureDuration);
+        } else {
+            console.log('✅ Pinch already detected, skipping analysis');
+        }
+
+        // Reset gesture tracking
+        initialTouchDistance = 0;
+        currentTouchDistance = 0;
+        maxPinchScale = 1.0;
+        isPinchDetected = false;
+        touchPath = [];
+        return;
+    }
+
+    // Otherwise, handle normal stage navigation
     applySwipeInertia();
+}
+
+function analyzeGestureForQuiz(e, duration) {
+    console.log('🔍 Analyzing gesture for quiz...', {
+        touchPathLength: touchPath.length,
+        duration: duration,
+        initialDistance: initialTouchDistance,
+        maxPinchScale: maxPinchScale.toFixed(2)
+    });
+
+    // Check for pinch gesture using max scale recorded
+    if (initialTouchDistance > 0 && maxPinchScale > 1.2) {
+        console.log('✅ Pinch detected in touchend! Max scale:', maxPinchScale);
+        quizSystem.handlePinch({ type: 'pinch', scale: maxPinchScale, direction: 'out' });
+        return;
+    }
+
+    // Log if pinch was attempted but didn't reach threshold
+    if (initialTouchDistance > 0) {
+        console.log('⚠️ Pinch detected but scale too small:', maxPinchScale.toFixed(2), '(need > 1.2)');
+    }
+
+    // Check for tap - ULTRA permissive for debugging
+    if (touchPath.length === 0) {
+        console.log('⚠️ No touch path recorded!');
+        // Even with no path, trigger a tap at default position
+        quizSystem.handleTap({
+            type: 'tap',
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+            distanceFromCenter: 0
+        });
+        return;
+    }
+
+    const start = touchPath[0];
+    const end = touchPath[touchPath.length - 1];
+    const distance = Math.sqrt(
+        Math.pow(end.x - start.x, 2) +
+        Math.pow(end.y - start.y, 2)
+    );
+
+    console.log('📊 Touch stats:', {
+        pathLength: touchPath.length,
+        duration: duration,
+        distance: distance.toFixed(1)
+    });
+
+    // ULTRA PERMISSIVE: Accept ANY single touch as a tap for now
+    // This is for debugging - we'll tighten it later
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    const distFromCenter = Math.sqrt(
+        Math.pow(start.x - centerX, 2) +
+        Math.pow(start.y - centerY, 2)
+    );
+
+    console.log('✅ TAP DETECTED (ultra permissive mode):', distFromCenter < 100 ? 'tap-center' : 'tap', 'at', start.x.toFixed(0), start.y.toFixed(0));
+    quizSystem.handleTap({
+        type: distFromCenter < 100 ? 'tap-center' : 'tap',
+        x: start.x,
+        y: start.y,
+        distanceFromCenter: distFromCenter
+    });
+    return;
+
+    // OLD CODE - commented out for debugging
+    // Check for tap (minimal movement OR short duration)
+    /*
+    if (distance < 50 || duration < 300) {
+        // Check if tap is in center
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const distFromCenter = Math.sqrt(
+            Math.pow(start.x - centerX, 2) +
+            Math.pow(start.y - centerY, 2)
+        );
+
+        console.log('✅ Tap detected:', distFromCenter < 100 ? 'tap-center' : 'tap', 'at', start.x.toFixed(0), start.y.toFixed(0));
+        quizSystem.handleTap({
+            type: distFromCenter < 100 ? 'tap-center' : 'tap',
+            x: start.x,
+            y: start.y,
+            distanceFromCenter: distFromCenter
+        });
+        return;
+    } else {
+        console.log('🤷 Touch moved too much for tap:', distance.toFixed(1), 'px, duration:', duration, 'ms');
+    }
+    */
+
+    // Check for circle gesture
+    if (touchPath.length > 15 && duration > 300) {
+        const circleResult = detectCircleGesture();
+        if (circleResult) {
+            console.log('Circle detected:', circleResult.direction);
+            quizSystem.handleCircle({
+                type: circleResult.direction === 'clockwise' ? 'circle-clockwise' : 'circle-counterclockwise',
+                direction: circleResult.direction,
+                degrees: circleResult.degrees
+            });
+            return;
+        }
+    }
+
+    // Check for swipe
+    if (touchPath.length >= 2) {
+        const start = touchPath[0];
+        const end = touchPath[touchPath.length - 1];
+        const deltaX = end.x - start.x;
+        const deltaY = end.y - start.y;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        console.log('Swipe analysis:', { deltaX, deltaY, distance });
+
+        if (distance > 80) {
+            const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+            const isLong = distance > 150;
+
+            if (isHorizontal) {
+                const gestureType = isLong ? 'swipe-horizontal-long' : 'swipe-horizontal';
+                console.log('Swipe detected:', gestureType);
+                quizSystem.handleSwipe({
+                    type: gestureType,
+                    direction: deltaX > 0 ? 'right' : 'left',
+                    distance: distance,
+                    deltaX: deltaX,
+                    deltaY: deltaY
+                });
+            }
+        }
+    }
+}
+
+function detectCircleGesture() {
+    if (touchPath.length < 15) return null;
+
+    // Calculate center point
+    let sumX = 0, sumY = 0;
+    for (const point of touchPath) {
+        sumX += point.x;
+        sumY += point.y;
+    }
+    const centerX = sumX / touchPath.length;
+    const centerY = sumY / touchPath.length;
+
+    // Calculate total angle traversed
+    let totalAngle = 0;
+    for (let i = 1; i < touchPath.length; i++) {
+        const prev = touchPath[i - 1];
+        const curr = touchPath[i];
+
+        const angle1 = Math.atan2(prev.y - centerY, prev.x - centerX);
+        const angle2 = Math.atan2(curr.y - centerY, curr.x - centerX);
+
+        let deltaAngle = angle2 - angle1;
+
+        // Normalize angle
+        if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
+        if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
+
+        totalAngle += deltaAngle;
+    }
+
+    const totalDegrees = Math.abs(totalAngle) * 180 / Math.PI;
+
+    // Check if we've made a circle (at least 270 degrees)
+    if (totalDegrees > 270) {
+        return {
+            direction: totalAngle > 0 ? 'counterclockwise' : 'clockwise',
+            degrees: totalDegrees
+        };
+    }
+
+    return null;
 }
 
 function updateSwipeProgress() {
@@ -441,7 +833,12 @@ async function setupHandGestureControls() {
                     onZoom: handleGestureZoom,
                     onStatusUpdate: (status) => {
                         gestureStatusText.textContent = status;
-                    }
+                    },
+                    // Quiz gesture callbacks
+                    onQuizTap: handleHandGestureTap,
+                    onQuizPinch: handleHandGesturePinch,
+                    onQuizSwipe: handleHandGestureSwipe,
+                    onQuizCircle: handleHandGestureCircle
                 });
 
                 if (!initialized) {
@@ -607,9 +1004,56 @@ function handleGestureZoom(scale) {
     }
 }
 
+// ===== Hand Gesture Quiz Handlers =====
+function handleHandGestureTap(gesture) {
+    // Only process if quiz is active
+    if (!quizSystem || !quizSystem.isQuizActive) {
+        return;
+    }
+
+    console.log('✊ Hand gesture TAP received for quiz:', gesture);
+    quizSystem.handleTap(gesture);
+}
+
+function handleHandGesturePinch(gesture) {
+    // Only process if quiz is active
+    if (!quizSystem || !quizSystem.isQuizActive) {
+        return;
+    }
+
+    console.log('🖐️ Hand gesture PINCH received for quiz:', gesture);
+    quizSystem.handlePinch(gesture);
+}
+
+function handleHandGestureSwipe(gesture) {
+    // Only process if quiz is active
+    if (!quizSystem || !quizSystem.isQuizActive) {
+        return;
+    }
+
+    console.log('👆 Hand gesture SWIPE received for quiz:', gesture);
+    quizSystem.handleSwipe(gesture);
+}
+
+function handleHandGestureCircle(gesture) {
+    // Only process if quiz is active
+    if (!quizSystem || !quizSystem.isQuizActive) {
+        return;
+    }
+
+    console.log('⭕ Hand gesture CIRCLE received for quiz:', gesture);
+    quizSystem.handleCircle(gesture);
+}
+
 // ===== Stage Navigation =====
 function goToStage(stage) {
     if (stage === currentStage || isAnimating) return;
+
+    // Block stage navigation if quiz is active
+    if (quizSystem && quizSystem.isQuizActive) {
+        console.log('Cannot change stage: Quiz is active');
+        return;
+    }
 
     direction = stage > currentStage ? 1 : -1;
     targetStage = stage;
@@ -626,6 +1070,8 @@ function goToStage(stage) {
 }
 
 function showStage(stage) {
+    console.log(`🎬 Showing stage ${stage}...`);
+
     isAnimating = true;
     currentStage = stage;
 
@@ -651,6 +1097,20 @@ function showStage(stage) {
     setTimeout(() => {
         showPanel(layerConfig);
     }, config.animation.panelDelay);
+
+    // Start quiz after animation completes
+    const quizDelay = layerConfig.duration + config.animation.panelDelay;
+    console.log(`⏰ Quiz will start in ${quizDelay}ms for stage ${stage}, has quiz: ${!!layerConfig.quiz}`);
+
+    setTimeout(() => {
+        if (quizSystem && layerConfig.quiz) {
+            console.log(`🎯 Starting quiz for stage ${stage}...`);
+            quizSystem.startQuiz(stage);
+            console.log(`✅ Quiz started. isQuizActive: ${quizSystem.isQuizActive}`);
+        } else {
+            console.log(`⚠️ No quiz system or quiz config for stage ${stage}`);
+        }
+    }, quizDelay);
 }
 
 function hideStage(stage) {

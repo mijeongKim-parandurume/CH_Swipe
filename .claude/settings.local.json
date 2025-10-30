@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
+<<<<<<< HEAD
       "Bash(git log:*)"
+=======
+      "Bash(az --version:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+>>>>>>> f0f12964bb875bfab9da29ceb17b3e94aa16cdc1
     ],
     "deny": [],
     "ask": []

@@ -13,7 +13,12 @@ let gestureCallbacks = {
     onSwipe: null,
     onRotate: null,
     onZoom: null,
-    onStatusUpdate: null
+    onStatusUpdate: null,
+    // Quiz gesture callbacks
+    onQuizTap: null,
+    onQuizPinch: null,
+    onQuizSwipe: null,
+    onQuizCircle: null
 };
 
 // ===== Helper Functions =====
@@ -251,6 +256,11 @@ function onResultsHands(results) {
 }
 
 // ===== Gesture Processing =====
+// Track previous gestures for quiz detection
+let prevHandGesture = null;
+let gestureStartTime = 0;
+let gestureHoldTime = 0;
+
 function processHandGestures(hands) {
     let isSwipe = false;
 
@@ -266,19 +276,72 @@ function processHandGestures(hands) {
 
     if (hands.length === 1) {
         const hand = hands[0];
+        const currentGesture = hand.gestures[0]; // Primary gesture
 
-        // Pointing gesture for swipe
+        // Track gesture hold time for quiz tap detection
+        if (currentGesture === prevHandGesture) {
+            gestureHoldTime = Date.now() - gestureStartTime;
+        } else {
+            prevHandGesture = currentGesture;
+            gestureStartTime = Date.now();
+            gestureHoldTime = 0;
+        }
+
+        // === QUIZ GESTURES ===
+
+        // 1. Open hand → Pinch out (확대) for quiz
+        if (hand.gestures.includes('Open hand') && gestureHoldTime > 500) {
+            if (gestureCallbacks.onQuizPinch) {
+                console.log('🖐️ Hand gesture: Open hand → Quiz Pinch OUT');
+                gestureCallbacks.onQuizPinch({ type: 'pinch', direction: 'out', scale: 1.5 });
+                gestureStartTime = Date.now(); // Reset to avoid repeat
+            }
+        }
+
+        // 2. Closed fist → Tap for quiz
+        if (hand.gestures.includes('Closed fist') && gestureHoldTime > 500) {
+            if (gestureCallbacks.onQuizTap) {
+                console.log('✊ Hand gesture: Closed fist → Quiz Tap');
+                gestureCallbacks.onQuizTap({
+                    type: 'tap',
+                    x: hand.canvasX * window.innerWidth,
+                    y: hand.canvasY * window.innerHeight
+                });
+                gestureStartTime = Date.now(); // Reset to avoid repeat
+            }
+        }
+
+        // 3. Pointing gesture for swipe (both navigation and quiz)
         if (hand.gestures.includes('Pointing')) {
             // Invert direction: left-to-right = positive (next), right-to-left = negative (prev)
             const swipeDelta = (hand.prevX - hand.x) * 2;
+
+            // For navigation
             if (gestureCallbacks.onSwipe) {
                 gestureCallbacks.onSwipe(swipeDelta);
             }
+
+            // For quiz (detect significant horizontal movement)
+            const horizontalMovement = Math.abs(hand.x - hand.prevX);
+            if (horizontalMovement > 0.05 && gestureCallbacks.onQuizSwipe) {
+                const direction = (hand.x - hand.prevX) > 0 ? 'right' : 'left';
+                console.log(`👆 Hand gesture: Pointing swipe ${direction} → Quiz Swipe`);
+                gestureCallbacks.onQuizSwipe({
+                    type: 'swipe-horizontal',
+                    direction: direction,
+                    distance: horizontalMovement * 1000,
+                    deltaX: hand.x - hand.prevX,
+                    deltaY: 0
+                });
+            }
+
             isSwipe = true;
         }
 
-        // Closed fist for rotation
-        if (hand.gestures.includes('Closed fist')) {
+        // === NAVIGATION GESTURES (original) ===
+
+        // Closed fist for rotation (only when not in quiz mode or already handled)
+        if (hand.gestures.includes('Closed fist') && gestureHoldTime < 500) {
             if (gestureCallbacks.onRotate) {
                 gestureCallbacks.onRotate(
                     (hand.prevY - hand.y) * 15, // Increased from 5 to 15 (3x more sensitive)

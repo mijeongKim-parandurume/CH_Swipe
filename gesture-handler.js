@@ -102,20 +102,22 @@ function drawHands(hands) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // Draw video frame (no mirroring)
+    // Mirror the entire canvas for better user experience
+    canvasCtx.save();
+    canvasCtx.translate(canvasElement.width, 0);
+    canvasCtx.scale(-1, 1);
+
+    // Draw video frame (mirrored)
     if (videoElement && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
         canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
     }
 
-    // Draw hands (need to mirror hand landmarks for display)
-    canvasCtx.save();
-    canvasCtx.translate(canvasElement.width, 0);
-    canvasCtx.scale(-1, 1);
+    // Draw hands (already in mirrored space, so draw normally)
     for (let i = 0; i < hands.length; i++) {
         drawHand(hands[i]);
     }
-    canvasCtx.restore();
 
+    canvasCtx.restore();
     canvasCtx.restore();
 }
 

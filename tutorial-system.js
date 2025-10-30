@@ -218,7 +218,21 @@ class TutorialSystem {
             return;
         }
 
+        console.log(`🎓 Tutorial step ${this.currentStep + 1} received gesture: ${gestureName}`);
+
+        // Step 2: Victory gesture ONLY (not Two fingers)
+        if (this.currentStep === 1) {
+            if (gestureName === 'Victory' && !this.isTransitioning) {
+                this.isTransitioning = true;
+                this.lastGestureTime = now;
+                console.log('✅ Victory gesture detected!');
+                setTimeout(() => this.nextStep(), 1000);
+            }
+            return;
+        }
+
         // Special case for step 3 (finger counting) - require BOTH gestures
+        // Accept One finger and Two fingers, but NOT Victory or Pointing
         if (this.currentStep === 2) {
             if (gestureName === 'One finger' && !this.step3_oneFingerDetected) {
                 this.step3_oneFingerDetected = true;

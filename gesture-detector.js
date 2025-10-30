@@ -117,20 +117,22 @@ class GestureDetector {
         const deltaY = end.y - start.y;
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
+        console.log('🔍 Analyzing gesture:', {
+            pathLength: this.touchPath.length,
+            distance,
+            duration,
+            deltaX,
+            deltaY
+        });
+
         // Check for tap (minimal movement)
         if (distance < 20 && duration < 300) {
             this.analyzeTap(start);
             return;
         }
 
-        // Check for swipe first (simpler and more reliable)
-        if (distance > this.options.swipeThreshold) {
-            this.analyzeSwipe(deltaX, deltaY, distance);
-            return;
-        }
-
-        // Check for V gesture
-        if (this.touchPath.length > 5 && duration < 1500) {
+        // Check for V gesture BEFORE swipe (V gesture has direction changes)
+        if (this.touchPath.length >= 5 && duration < 1500) {
             const vResult = this.detectVGesture();
             if (vResult) {
                 this.triggerVGesture(vResult);
@@ -145,6 +147,12 @@ class GestureDetector {
                 this.triggerCircle(circleResult);
                 return;
             }
+        }
+
+        // Check for swipe last (simple straight line motion)
+        if (distance > this.options.swipeThreshold) {
+            this.analyzeSwipe(deltaX, deltaY, distance);
+            return;
         }
     }
 
@@ -287,7 +295,10 @@ class GestureDetector {
     }
 
     detectVGesture() {
-        if (this.touchPath.length < 5) return null;
+        if (this.touchPath.length < 5) {
+            console.log('❌ V gesture: path too short', this.touchPath.length);
+            return null;
+        }
 
         const pathLength = this.touchPath.length;
         const segmentSize = Math.floor(pathLength / 3);
@@ -297,7 +308,8 @@ class GestureDetector {
         const middleSegment = this.touchPath.slice(segmentSize, segmentSize * 2);
         const endSegment = this.touchPath.slice(segmentSize * 2);
 
-        if (startSegment.length < 2 || middleSegment.length < 2 || endSegment.length < 2) {
+        if (startSegment.length < 1 || middleSegment.length < 1 || endSegment.length < 1) {
+            console.log('❌ V gesture: segments too short');
             return null;
         }
 
@@ -316,13 +328,24 @@ class GestureDetector {
         const firstLegDistance = Math.sqrt(firstLegDeltaX * firstLegDeltaX + firstLegDeltaY * firstLegDeltaY);
         const secondLegDistance = Math.sqrt(secondLegDeltaX * secondLegDeltaX + secondLegDeltaY * secondLegDeltaY);
 
-        // Both legs should have reasonable length
-        if (firstLegDistance < 40 || secondLegDistance < 40) {
+        console.log('🔍 V gesture check:', {
+            firstLegDistance,
+            secondLegDistance,
+            firstLegDeltaY,
+            secondLegDeltaY,
+            firstLegDeltaX,
+            secondLegDeltaX
+        });
+
+        // Both legs should have reasonable length (lowered threshold)
+        if (firstLegDistance < 30 || secondLegDistance < 30) {
+            console.log('❌ V gesture: legs too short');
             return null;
         }
 
-        // Both legs should go generally downward (positive Y)
-        if (firstLegDeltaY < 0 || secondLegDeltaY < 0) {
+        // Both legs should go generally downward (positive Y) - more lenient
+        if (firstLegDeltaY < -10 || secondLegDeltaY < -10) {
+            console.log('❌ V gesture: not going downward');
             return null;
         }
 
@@ -332,8 +355,15 @@ class GestureDetector {
         const firstGoesRight = firstLegDeltaX > 0;
         const secondGoesRight = secondLegDeltaX > 0;
 
+        console.log('🔍 V direction check:', {
+            firstGoesRight,
+            secondGoesRight,
+            shouldBeOpposite: firstGoesRight !== secondGoesRight
+        });
+
         // They should go in opposite horizontal directions
         if (firstGoesRight === secondGoesRight) {
+            console.log('❌ V gesture: not forming V shape');
             return null;
         }
 
@@ -341,12 +371,16 @@ class GestureDetector {
         const horizontalSpread = Math.abs(end.x - start.x);
         const verticalDrop = Math.max(middle.y, end.y) - start.y;
 
-        // V should have some width relative to height
-        if (horizontalSpread < 20 || verticalDrop < 30) {
+        // V should have some width relative to height (more lenient)
+        if (horizontalSpread < 15 || verticalDrop < 20) {
+            console.log('❌ V gesture: too narrow or shallow', {
+                horizontalSpread,
+                verticalDrop
+            });
             return null;
         }
 
-        console.log('✅ V Gesture detected:', {
+        console.log('✅ V Gesture detected!', {
             horizontalSpread,
             verticalDrop,
             firstLegDistance,

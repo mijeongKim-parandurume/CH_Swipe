@@ -331,7 +331,7 @@ body, html {
     border: 2px solid var(--color-accent);
     border-radius: 20px;
     padding: 3rem 2.5rem;
-    max-width: 600px;
+    max-width: 1000px;
     width: 85%;
     z-index: 200;
     backdrop-filter: blur(15px);

@@ -68,6 +68,7 @@ let quizSkip;
 // Center Description System
 let centerDescription, centerTitle, centerText, dismissBtn;
 let isDescriptionDismissed = false;
+let centerGestureDetector = null;
 
 // ===== Initialization =====
 async function init() {
@@ -318,6 +319,23 @@ function showCenterDescription(layerConfig) {
 
     // Close right panel
     infoPanel.classList.add('closed');
+
+    // Initialize gesture detector for V gesture if not already done
+    if (!centerGestureDetector && window.GestureDetector) {
+        centerGestureDetector = new GestureDetector(centerDescription, {
+            onVGesture: (gesture) => {
+                console.log('✅ V gesture detected!', gesture);
+                dismissDescription();
+            },
+            onSwipe: (gesture) => {
+                // Also allow downward swipe to dismiss
+                if (gesture.direction === 'down') {
+                    console.log('✅ Downward swipe detected!');
+                    dismissDescription();
+                }
+            }
+        });
+    }
 }
 
 function dismissDescription() {

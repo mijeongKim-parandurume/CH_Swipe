@@ -29,6 +29,7 @@ class GestureDetector {
         this.onSwipe = options.onSwipe || null;
         this.onTap = options.onTap || null;
         this.onCircle = options.onCircle || null;
+        this.onVGesture = options.onVGesture || null;
 
         // Bind events
         this.bindEvents();
@@ -122,6 +123,15 @@ class GestureDetector {
             return;
         }
 
+        // Check for V gesture
+        if (this.touchPath.length > 5 && duration < 1500) {
+            const vResult = this.detectVGesture();
+            if (vResult) {
+                this.triggerVGesture(vResult);
+                return;
+            }
+        }
+
         // Check for circle gesture
         if (this.touchPath.length > 10 && duration > 300) {
             const circleResult = this.detectCircle();
@@ -140,13 +150,22 @@ class GestureDetector {
     analyzeSwipe(deltaX, deltaY, distance) {
         const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
         const isHorizontal = Math.abs(angle) < 45 || Math.abs(angle) > 135;
+        const isVertical = Math.abs(angle) > 45 && Math.abs(angle) < 135;
         const isLong = distance > this.options.longSwipeThreshold;
 
-        if (isHorizontal) {
-            if (this.onSwipe) {
+        if (this.onSwipe) {
+            if (isHorizontal) {
                 this.onSwipe({
                     type: isLong ? 'swipe-horizontal-long' : 'swipe-horizontal',
                     direction: deltaX > 0 ? 'right' : 'left',
+                    distance: distance,
+                    deltaX: deltaX,
+                    deltaY: deltaY
+                });
+            } else if (isVertical) {
+                this.onSwipe({
+                    type: 'swipe-vertical',
+                    direction: deltaY > 0 ? 'down' : 'up',
                     distance: distance,
                     deltaX: deltaX,
                     deltaY: deltaY
@@ -251,6 +270,77 @@ class GestureDetector {
                 direction: circleResult.direction,
                 degrees: circleResult.degrees,
                 radius: circleResult.radius
+            });
+        }
+    }
+
+    detectVGesture() {
+        if (this.touchPath.length < 6) return null;
+
+        // Find the turning point (lowest Y value)
+        let lowestIndex = 0;
+        let lowestY = this.touchPath[0].y;
+
+        for (let i = 1; i < this.touchPath.length; i++) {
+            if (this.touchPath[i].y > lowestY) {
+                lowestY = this.touchPath[i].y;
+                lowestIndex = i;
+            }
+        }
+
+        // Need turning point in the middle (not at start or end)
+        if (lowestIndex < 2 || lowestIndex > this.touchPath.length - 3) {
+            return null;
+        }
+
+        const start = this.touchPath[0];
+        const middle = this.touchPath[lowestIndex];
+        const end = this.touchPath[this.touchPath.length - 1];
+
+        // Calculate angles
+        const firstLegDeltaX = middle.x - start.x;
+        const firstLegDeltaY = middle.y - start.y;
+        const secondLegDeltaX = end.x - middle.x;
+        const secondLegDeltaY = end.y - middle.y;
+
+        // Both legs should go downward (positive Y)
+        if (firstLegDeltaY < 30 || secondLegDeltaY < 30) {
+            return null;
+        }
+
+        // First leg should go down-left or down-right
+        // Second leg should go in opposite direction
+        const firstLegAngle = Math.atan2(firstLegDeltaY, firstLegDeltaX) * 180 / Math.PI;
+        const secondLegAngle = Math.atan2(secondLegDeltaY, secondLegDeltaX) * 180 / Math.PI;
+
+        // Check if it forms a V shape (legs should diverge)
+        const isVShape = (firstLegDeltaX < 0 && secondLegDeltaX > 0) ||
+                         (firstLegDeltaX > 0 && secondLegDeltaX < 0);
+
+        if (!isVShape) {
+            return null;
+        }
+
+        // Calculate the angle between the legs
+        const angleDiff = Math.abs(firstLegAngle - secondLegAngle);
+
+        // V should have an angle between 20 and 140 degrees
+        if (angleDiff < 20 || angleDiff > 140) {
+            return null;
+        }
+
+        return {
+            angle: angleDiff,
+            depth: lowestY - Math.min(start.y, end.y)
+        };
+    }
+
+    triggerVGesture(vResult) {
+        if (this.onVGesture) {
+            this.onVGesture({
+                type: 'v-gesture',
+                angle: vResult.angle,
+                depth: vResult.depth
             });
         }
     }

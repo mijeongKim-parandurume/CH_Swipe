@@ -114,6 +114,13 @@ class QuizSystem {
             expectedType: this.currentQuiz?.gestureType
         });
 
+        // Check if center description is still visible
+        const centerDescription = document.getElementById('center-description');
+        if (centerDescription && !centerDescription.classList.contains('hidden')) {
+            console.log('⚠️ Center description is visible, ignoring quiz gesture');
+            return false;
+        }
+
         if (!this.isQuizActive || !this.currentQuiz) {
             console.log('⚠️ Quiz not active or no current quiz');
             return false;

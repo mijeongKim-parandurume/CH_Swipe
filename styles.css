@@ -407,6 +407,13 @@ body, html {
     }
 }
 
+.gesture-hint {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--color-text-dim);
+    opacity: 0.8;
+}
+
 /* ===== Quiz Container ===== */
 .quiz-container {
     position: fixed !important;

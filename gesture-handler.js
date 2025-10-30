@@ -18,7 +18,9 @@ let gestureCallbacks = {
     onQuizTap: null,
     onQuizPinch: null,
     onQuizSwipe: null,
-    onQuizCircle: null
+    onQuizCircle: null,
+    // Center description callback
+    onVictory: null
 };
 
 // ===== Helper Functions =====
@@ -274,6 +276,10 @@ function processHandGestures(hands) {
         }
     }
 
+    // Check if center description is visible
+    const centerDescription = document.getElementById('center-description');
+    const isCenterDescriptionVisible = centerDescription && !centerDescription.classList.contains('hidden');
+
     if (hands.length === 1) {
         const hand = hands[0];
         const currentGesture = hand.gestures[0]; // Primary gesture
@@ -285,6 +291,22 @@ function processHandGestures(hands) {
             prevHandGesture = currentGesture;
             gestureStartTime = Date.now();
             gestureHoldTime = 0;
+        }
+
+        // === PRIORITY: Victory gesture for center description ===
+        if (hand.gestures.includes('Victory') && gestureHoldTime > 500) {
+            if (isCenterDescriptionVisible && gestureCallbacks.onVictory) {
+                console.log('✌️ Hand gesture: Victory → Dismiss center description');
+                gestureCallbacks.onVictory();
+                gestureStartTime = Date.now(); // Reset to avoid repeat
+                return; // Stop processing other gestures
+            }
+        }
+
+        // If center description is visible, ignore all other gestures
+        if (isCenterDescriptionVisible) {
+            console.log('⚠️ Center description visible, ignoring other gestures');
+            return;
         }
 
         // === QUIZ GESTURES ===

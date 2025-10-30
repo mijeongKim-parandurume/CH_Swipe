@@ -350,7 +350,13 @@ function showCenterDescription(layerConfig) {
     // Close right panel
     infoPanel.classList.add('closed');
 
-    console.log('📋 Center description shown, gesture detector should be active');
+    // Disable OrbitControls to prevent model movement
+    if (orbitControls) {
+        orbitControls.enabled = false;
+        console.log('🔒 OrbitControls disabled - center description visible');
+    }
+
+    console.log('📋 Center description shown, only Victory gesture will work');
 }
 
 function dismissDescription() {
@@ -358,6 +364,12 @@ function dismissDescription() {
 
     // Hide center description
     centerDescription.classList.add('hidden');
+
+    // Re-enable OrbitControls
+    if (orbitControls) {
+        orbitControls.enabled = true;
+        console.log('🔓 OrbitControls enabled - center description dismissed');
+    }
 
     // Update right panel with description content
     panelTitle.textContent = centerTitle.textContent;
@@ -921,7 +933,9 @@ async function setupHandGestureControls() {
                     onQuizTap: handleHandGestureTap,
                     onQuizPinch: handleHandGesturePinch,
                     onQuizSwipe: handleHandGestureSwipe,
-                    onQuizCircle: handleHandGestureCircle
+                    onQuizCircle: handleHandGestureCircle,
+                    // Center description callback
+                    onVictory: dismissDescription
                 });
 
                 if (!initialized) {

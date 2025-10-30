@@ -323,20 +323,20 @@ body, html {
 
 /* ===== Quiz Container ===== */
 .quiz-container {
-    position: fixed;
-    bottom: 100px;
-    left: 30px;
+    position: fixed !important;
+    bottom: 100px !important;
+    left: 30px !important;
     background: rgba(26, 26, 46, 0.95);
     border: 2px solid var(--color-border);
     border-radius: 16px;
     padding: 1.5rem;
-    /* max-width: 400px; */
-    width: 500px;
+    width: 500px !important;
     z-index: 150;
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     transition: opacity var(--transition-medium), transform var(--transition-medium);
     pointer-events: none; /* Allow touches to pass through to canvas */
+    transform: none !important; /* 중앙정렬 transform 제거 */
 }
 
 .quiz-container.hidden {

@@ -347,8 +347,8 @@ function showCenterDescription(layerConfig) {
     // Show center description
     centerDescription.classList.remove('hidden');
 
-    // Close right panel
-    infoPanel.classList.add('closed');
+    // Hide right panel completely
+    infoPanel.classList.add('hidden');
 
     // Disable OrbitControls to prevent model movement
     if (orbitControls) {
@@ -375,10 +375,9 @@ function dismissDescription() {
     panelTitle.textContent = centerTitle.textContent;
     panelDescription.textContent = centerText.textContent;
 
-    // Open right panel if closed
-    if (infoPanel.classList.contains('closed')) {
-        infoPanel.classList.remove('closed');
-    }
+    // Show right panel
+    infoPanel.classList.remove('hidden');
+    infoPanel.classList.remove('closed');
 
     // Show quiz container
     showQuizForCurrentStage();

@@ -9,7 +9,6 @@ class QuizSystem {
         this.options = options;
 
         // Modules
-        this.narrator = new AudioNarrator();
         this.feedback = new FeedbackEffects();
         this.gestureDetector = null;
 
@@ -72,9 +71,6 @@ class QuizSystem {
         // Show quiz UI
         this.showQuizUI();
 
-        // Play narration
-        this.playNarration();
-
         // Callback
         if (this.onQuizStart) {
             this.onQuizStart(stage);
@@ -104,21 +100,6 @@ class QuizSystem {
         this.quizContainer.classList.add('hidden');
     }
 
-    /**
-     * Play narration for current quiz
-     */
-    async playNarration() {
-        if (!this.currentQuiz) return;
-
-        try {
-            await this.narrator.speak(this.currentQuiz.narration, {
-                rate: 0.9,
-                pitch: 1.0
-            });
-        } catch (error) {
-            console.error('Narration error:', error);
-        }
-    }
 
     /**
      * Check if gesture matches expected type
@@ -200,9 +181,6 @@ class QuizSystem {
 
         // Play feedback effects
         await this.feedback.correct(this.canvasElement);
-
-        // Speak feedback
-        await this.narrator.speak(this.currentQuiz.correctFeedback);
 
         // Hide quiz UI after delay
         setTimeout(() => {
@@ -318,25 +296,11 @@ class QuizSystem {
         }
     }
 
-    /**
-     * Toggle narration play/pause
-     */
-    toggleNarration() {
-        this.narrator.toggle();
-    }
-
-    /**
-     * Stop narration
-     */
-    stopNarration() {
-        this.narrator.stop();
-    }
 
     /**
      * Clean up
      */
     destroy() {
-        this.stopNarration();
         // Note: Gesture detection is handled by app.js, no cleanup needed
     }
 }

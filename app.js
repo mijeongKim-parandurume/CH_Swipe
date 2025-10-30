@@ -390,14 +390,7 @@ function initQuizSystem() {
 
 // ===== Quiz Event Listeners =====
 function setupQuizEventListeners() {
-    if (!quizNarrationToggle || !quizSkip) return;
-
-    // Narration toggle
-    quizNarrationToggle.addEventListener('click', () => {
-        if (quizSystem) {
-            quizSystem.toggleNarration();
-        }
-    });
+    if (!quizSkip) return;
 
     // Skip button
     quizSkip.addEventListener('click', () => {

@@ -63,7 +63,11 @@ let handSwipeAccumulator = 0;
 // Quiz System
 let quizSystem = null;
 let quizContainer, quizQuestion, quizHint, quizFeedback;
-let quizNarrationToggle, quizSkip;
+let quizSkip;
+
+// Center Description System
+let centerDescription, centerTitle, centerText, dismissBtn;
+let isDescriptionDismissed = false;
 
 // ===== Initialization =====
 async function init() {
@@ -132,8 +136,13 @@ function initUIElements() {
     quizQuestion = document.getElementById('quiz-question');
     quizHint = document.getElementById('quiz-hint');
     quizFeedback = document.getElementById('quiz-feedback');
-    quizNarrationToggle = document.getElementById('quiz-narration-toggle');
     quizSkip = document.getElementById('quiz-skip');
+
+    // Center description elements
+    centerDescription = document.getElementById('center-description');
+    centerTitle = document.getElementById('center-title');
+    centerText = document.getElementById('center-text');
+    dismissBtn = document.getElementById('dismiss-description');
 }
 
 // ===== Three.js Initialization =====
@@ -293,6 +302,54 @@ function setupEventListeners() {
 
     // Quiz buttons
     setupQuizEventListeners();
+
+    // Center description dismiss button
+    dismissBtn.addEventListener('click', dismissDescription);
+}
+
+// ===== Center Description Functions =====
+function showCenterDescription(layerConfig) {
+    // Update center description content
+    centerTitle.textContent = layerConfig.title;
+    centerText.textContent = layerConfig.description;
+
+    // Show center description
+    centerDescription.classList.remove('hidden');
+
+    // Close right panel
+    infoPanel.classList.add('closed');
+}
+
+function dismissDescription() {
+    isDescriptionDismissed = true;
+
+    // Hide center description
+    centerDescription.classList.add('hidden');
+
+    // Update right panel with description content
+    panelTitle.textContent = centerTitle.textContent;
+    panelDescription.textContent = centerText.textContent;
+
+    // Open right panel if closed
+    if (infoPanel.classList.contains('closed')) {
+        infoPanel.classList.remove('closed');
+    }
+
+    // Show quiz container
+    showQuizForCurrentStage();
+}
+
+function showQuizForCurrentStage() {
+    const layerIndex = currentStage - 1;
+    const layerConfig = config.layers[layerIndex];
+
+    if (quizSystem && layerConfig.quiz) {
+        console.log(`🎯 Starting quiz for stage ${currentStage}...`);
+        quizSystem.startQuiz(currentStage);
+        console.log(`✅ Quiz started. isQuizActive: ${quizSystem.isQuizActive}`);
+    } else {
+        console.log(`⚠️ No quiz system or quiz config for stage ${currentStage}`);
+    }
 }
 
 // ===== Quiz System Initialization =====
@@ -1093,24 +1150,16 @@ function showStage(stage) {
     // Update UI
     updateUI();
 
-    // Show panel after animation delay
+    // Reset description dismissed state
+    isDescriptionDismissed = false;
+
+    // Hide quiz container
+    quizContainer.classList.add('hidden');
+
+    // Show center description after animation delay
     setTimeout(() => {
-        showPanel(layerConfig);
+        showCenterDescription(layerConfig);
     }, config.animation.panelDelay);
-
-    // Start quiz after animation completes
-    const quizDelay = layerConfig.duration + config.animation.panelDelay;
-    console.log(`⏰ Quiz will start in ${quizDelay}ms for stage ${stage}, has quiz: ${!!layerConfig.quiz}`);
-
-    setTimeout(() => {
-        if (quizSystem && layerConfig.quiz) {
-            console.log(`🎯 Starting quiz for stage ${stage}...`);
-            quizSystem.startQuiz(stage);
-            console.log(`✅ Quiz started. isQuizActive: ${quizSystem.isQuizActive}`);
-        } else {
-            console.log(`⚠️ No quiz system or quiz config for stage ${stage}`);
-        }
-    }, quizDelay);
 }
 
 function hideStage(stage) {

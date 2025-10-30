@@ -111,16 +111,27 @@
             </div>
         </div>
 
+        <!-- Center Description Container -->
+        <div class="center-description" id="center-description">
+            <div class="center-description-content">
+                <h2 class="center-title" id="center-title">천상열차분야지도</h2>
+                <div class="center-text" id="center-text">
+                    스와이프하여 천문도의 각 단계를 탐험하세요
+                </div>
+                <button class="dismiss-btn" id="dismiss-description" aria-label="설명 내리기">
+                    <span class="dismiss-icon">∨</span>
+                    <span class="dismiss-text">설명 확인</span>
+                </button>
+            </div>
+        </div>
+
         <!-- Quiz Container -->
-        <div class="quiz-container" id="quiz-container">
+        <div class="quiz-container hidden" id="quiz-container">
             <div class="quiz-content">
                 <h3 class="quiz-question" id="quiz-question">질문이 여기에 표시됩니다</h3>
                 <p class="quiz-hint" id="quiz-hint">힌트가 여기에 표시됩니다</p>
                 <div class="quiz-feedback" id="quiz-feedback"></div>
                 <div class="quiz-controls">
-                    <button class="quiz-btn" id="quiz-narration-toggle" aria-label="음성 재생/정지">
-                        🔊 음성
-                    </button>
                     <button class="quiz-btn skip-btn" id="quiz-skip" aria-label="건너뛰기">
                         건너뛰기
                     </button>
@@ -188,7 +199,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="audio-narrator.js"></script>
     <script src="gesture-detector.js"></script>
     <script src="feedback-effects.js"></script>
     <script src="quiz-system.js"></script>

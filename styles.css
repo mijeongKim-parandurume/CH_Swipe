@@ -321,6 +321,90 @@ body, html {
     color: var(--color-text);
 }
 
+/* ===== Center Description Container ===== */
+.center-description {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(26, 26, 46, 0.98);
+    border: 2px solid var(--color-accent);
+    border-radius: 20px;
+    padding: 3rem 2.5rem;
+    max-width: 600px;
+    width: 85%;
+    z-index: 200;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 10px 40px rgba(74, 158, 255, 0.3);
+    transition: opacity var(--transition-medium), transform var(--transition-medium);
+    text-align: center;
+}
+
+.center-description.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+.center-description-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.center-title {
+    font-size: 2rem;
+    color: var(--color-accent);
+    margin: 0;
+    letter-spacing: 0.05em;
+}
+
+.center-text {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: var(--color-text);
+    white-space: pre-line;
+}
+
+.dismiss-btn {
+    margin-top: 1rem;
+    padding: 1rem 2.5rem;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 15px rgba(74, 158, 255, 0.4);
+}
+
+.dismiss-btn:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 158, 255, 0.6);
+}
+
+.dismiss-icon {
+    font-size: 1.3rem;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(5px);
+    }
+}
+
 /* ===== Quiz Container ===== */
 .quiz-container {
     position: fixed !important;
@@ -775,6 +859,24 @@ body, html {
 
     .quiz-controls {
         flex-direction: column;
+    }
+
+    .center-description {
+        width: 90%;
+        padding: 2rem 1.5rem;
+    }
+
+    .center-title {
+        font-size: 1.5rem;
+    }
+
+    .center-text {
+        font-size: 1rem;
+    }
+
+    .dismiss-btn {
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
     }
 }
 

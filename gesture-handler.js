@@ -20,7 +20,9 @@ let gestureCallbacks = {
     onQuizSwipe: null,
     onQuizCircle: null,
     // Center description callback
-    onVictory: null
+    onVictory: null,
+    // Tutorial callback
+    onTutorialGesture: null
 };
 
 // ===== Helper Functions =====
@@ -44,7 +46,28 @@ function detectGestures(landmarks) {
     const ringDist = distanceBetweenPoints(ringTip, wrist);
     const pinkyDist = distanceBetweenPoints(pinkyTip, wrist);
 
+    // Count extended fingers for quiz answers
+    const thumbDist = distanceBetweenPoints(thumbTip, wrist);
+    let extendedFingers = 0;
+    if (indexDist > 0.15) extendedFingers++;
+    if (middleDist > 0.15) extendedFingers++;
+    if (ringDist > 0.15) extendedFingers++;
+    if (pinkyDist > 0.15) extendedFingers++;
+
+    // One finger extended (quiz answer 1) - only index finger
+    if (extendedFingers === 1 && indexDist > 0.15 &&
+        middleDist < 0.12 && ringDist < 0.12 && pinkyDist < 0.12) {
+        gestures.push('One finger');
+    }
+
+    // Two fingers extended (quiz answer 2) - index and middle
+    if (extendedFingers === 2 && indexDist > 0.15 && middleDist > 0.15 &&
+        ringDist < 0.12 && pinkyDist < 0.12) {
+        gestures.push('Two fingers');
+    }
+
     // Pointing (index finger extended, others folded) - relaxed conditions
+    // This is similar to "One finger" but with more relaxed thresholds for navigation
     if (indexDist > 0.13 &&
         indexDist > middleDist + 0.03 &&
         indexDist > ringDist + 0.03 &&
@@ -61,7 +84,7 @@ function detectGestures(landmarks) {
     }
 
     // Open hand - all fingers extended
-    if (distanceBetweenPoints(thumbTip, wrist) > 0.1 &&
+    if (thumbDist > 0.1 &&
         indexDist > 0.15 &&
         middleDist > 0.15 &&
         ringDist > 0.15 &&
@@ -70,11 +93,29 @@ function detectGestures(landmarks) {
     }
 
     // Victory sign - index and middle extended, ring and pinky folded
+    // This is same as "Two fingers" but kept for compatibility
     if (indexDist > 0.15 &&
         middleDist > 0.15 &&
         ringDist < 0.12 &&
         pinkyDist < 0.12) {
         gestures.push('Victory');
+    }
+
+    // Thumbs up - thumb extended, other fingers folded
+    if (thumbDist > 0.15 &&
+        indexDist < 0.12 &&
+        middleDist < 0.12 &&
+        ringDist < 0.12 &&
+        pinkyDist < 0.12) {
+        gestures.push('Thumbs up');
+
+        // Detect thumb direction (horizontal position relative to wrist)
+        const thumbDirection = thumbTip.x - wrist.x;
+        if (thumbDirection > 0.05) {
+            gestures.push('Thumbs up right');
+        } else if (thumbDirection < -0.05) {
+            gestures.push('Thumbs up left');
+        }
     }
 
     return gestures;
@@ -303,6 +344,12 @@ function processHandGestures(hands) {
                 gestureStartTime = Date.now(); // Reset to avoid repeat
                 return; // Stop processing other gestures
             }
+
+            // Notify tutorial system about Victory gesture
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('Victory', 1);
+                gestureStartTime = Date.now();
+            }
         }
 
         // If center description is visible, ignore all other gestures
@@ -333,10 +380,35 @@ function processHandGestures(hands) {
                 });
                 gestureStartTime = Date.now(); // Reset to avoid repeat
             }
+
+            // Notify tutorial system about Closed fist gesture
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('Closed fist', 1);
+            }
+        }
+
+        // Check for finger counting gestures (for quiz)
+        if (hand.gestures.includes('One finger') && gestureHoldTime > 500) {
+            // Notify tutorial system
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('One finger', 1);
+            }
+        }
+
+        if (hand.gestures.includes('Two fingers') && gestureHoldTime > 500) {
+            // Notify tutorial system
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('Two fingers', 1);
+            }
         }
 
         // 3. Pointing gesture for swipe (both navigation and quiz)
         if (hand.gestures.includes('Pointing')) {
+            // Notify tutorial system about Pointing gesture
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('Pointing', 1);
+            }
+
             // Invert direction: left-to-right = positive (next), right-to-left = negative (prev)
             const swipeDelta = (hand.prevX - hand.x) * 2;
 
@@ -362,6 +434,31 @@ function processHandGestures(hands) {
             isSwipe = true;
         }
 
+        // 4. Thumbs up gesture for directional swipe
+        if (hand.gestures.includes('Thumbs up')) {
+            // Notify tutorial system about Thumbs up gesture
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('Thumbs up', 1);
+            }
+
+            // Check thumb direction for navigation
+            if (hand.gestures.includes('Thumbs up right')) {
+                // Thumb pointing right → swipe right (next stage)
+                if (gestureCallbacks.onSwipe) {
+                    gestureCallbacks.onSwipe(0.5); // Positive for right
+                }
+                console.log('👍 Thumbs up pointing right → Next stage');
+            } else if (hand.gestures.includes('Thumbs up left')) {
+                // Thumb pointing left → swipe left (previous stage)
+                if (gestureCallbacks.onSwipe) {
+                    gestureCallbacks.onSwipe(-0.5); // Negative for left
+                }
+                console.log('👍 Thumbs up pointing left → Previous stage');
+            }
+
+            isSwipe = true;
+        }
+
         // === NAVIGATION GESTURES (original) ===
 
         // Closed fist for rotation (only when not in quiz mode or already handled)
@@ -382,6 +479,11 @@ function processHandGestures(hands) {
         if (hand1.gestures.includes('Closed fist') &&
             hand2.gestures.includes('Closed fist') &&
             hand1.label !== hand2.label) {
+            // Notify tutorial system about two-hand gesture
+            if (gestureCallbacks.onTutorialGesture) {
+                gestureCallbacks.onTutorialGesture('Closed fist', 2);
+            }
+
             const distance = Math.sqrt(Math.pow(hand1.x - hand2.x, 2) +
                                       Math.pow(hand1.y - hand2.y, 2));
             const prevDistance = Math.sqrt(Math.pow(hand1.prevX - hand2.prevX, 2) +

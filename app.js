@@ -56,6 +56,7 @@ let controlsHint, seasonCTA;
 let gestureToggle, gestureContent, gestureStatusText, handPositionText;
 let cameraSelect;
 let isGestureEnabled = false;
+window.isGestureEnabled = false; // Global flag for tutorial system
 
 // Hand gesture swipe accumulator
 let handSwipeAccumulator = 0;
@@ -69,6 +70,9 @@ let quizSkip;
 let centerDescription, centerTitle, centerText, dismissBtn;
 let isDescriptionDismissed = false;
 let centerGestureDetector = null;
+
+// Tutorial System
+let tutorialSystem = null;
 
 // ===== Initialization =====
 async function init() {
@@ -89,6 +93,9 @@ async function init() {
         // Initialize Quiz System
         initQuizSystem();
 
+        // Initialize Tutorial System
+        initTutorialSystem();
+
         // Setup event listeners
         setupEventListeners();
 
@@ -97,6 +104,13 @@ async function init() {
 
         // Show first stage
         showStage(1);
+
+        // Start tutorial after a brief delay
+        setTimeout(() => {
+            if (tutorialSystem) {
+                tutorialSystem.start();
+            }
+        }, 1000);
 
         // Auto-hide controls hint after 5 seconds
         setTimeout(() => {
@@ -430,6 +444,32 @@ function initQuizSystem() {
         feedbackElement: !!quizFeedback,
         canvasElement: !!canvas
     });
+}
+
+// ===== Tutorial System Initialization =====
+function initTutorialSystem() {
+    console.log('🎓 Initializing Tutorial System...');
+
+    if (!window.TutorialSystem) {
+        console.error('❌ TutorialSystem not loaded! Check if tutorial-system.js is loaded correctly.');
+        return;
+    }
+
+    console.log('✅ TutorialSystem class found');
+
+    tutorialSystem = new TutorialSystem();
+    tutorialSystem.init();
+
+    // Set up callback for tutorial completion
+    tutorialSystem.onComplete = () => {
+        console.log('🎉 Tutorial completed! Main experience ready.');
+        // Auto-enable gesture tracking if not already enabled
+        if (!isGestureEnabled) {
+            gestureToggle.click();
+        }
+    };
+
+    console.log('✅ TutorialSystem initialized');
 }
 
 // ===== Quiz Event Listeners =====
@@ -908,6 +948,7 @@ async function setupHandGestureControls() {
         if (isGestureEnabled) {
             window.GestureHandler.stopCamera();
             isGestureEnabled = false;
+            window.isGestureEnabled = false;
             gestureToggle.classList.remove('active');
             gestureContent.classList.add('hidden');
             gestureStatusText.textContent = '제스처가 비활성화되었습니다';
@@ -934,7 +975,13 @@ async function setupHandGestureControls() {
                     onQuizSwipe: handleHandGestureSwipe,
                     onQuizCircle: handleHandGestureCircle,
                     // Center description callback
-                    onVictory: dismissDescription
+                    onVictory: dismissDescription,
+                    // Tutorial callback
+                    onTutorialGesture: (gestureName, handCount) => {
+                        if (tutorialSystem && tutorialSystem.isActive) {
+                            tutorialSystem.onGestureDetected(gestureName, handCount);
+                        }
+                    }
                 });
 
                 if (!initialized) {
@@ -966,9 +1013,11 @@ async function setupHandGestureControls() {
                         if (success) {
                             gestureStatusText.textContent = '손 제스처 활성화됨';
                             isGestureEnabled = true;
+                            window.isGestureEnabled = true;
                         } else {
                             gestureStatusText.textContent = 'Error: 카메라 시작 실패';
                             isGestureEnabled = false;
+                            window.isGestureEnabled = false;
                         }
                     }
                 });
@@ -978,6 +1027,7 @@ async function setupHandGestureControls() {
                 if (success) {
                     gestureStatusText.textContent = '손 제스처 활성화됨';
                     isGestureEnabled = true;
+                    window.isGestureEnabled = true;
                     gestureToggle.classList.add('active');
 
                     // Hide panel after 3 seconds
@@ -997,6 +1047,7 @@ async function setupHandGestureControls() {
             if (success) {
                 gestureStatusText.textContent = '손 제스처 활성화됨';
                 isGestureEnabled = true;
+                window.isGestureEnabled = true;
                 gestureToggle.classList.add('active');
                 gestureContent.classList.remove('hidden');
 

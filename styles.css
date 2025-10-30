@@ -338,6 +338,8 @@ body, html {
     box-shadow: 0 10px 40px rgba(74, 158, 255, 0.3);
     transition: opacity var(--transition-medium), transform var(--transition-medium);
     text-align: center;
+    pointer-events: auto;
+    touch-action: none; /* Allow gesture detection */
 }
 
 .center-description.hidden {

@@ -306,6 +306,36 @@ function setupEventListeners() {
 
     // Center description dismiss button
     dismissBtn.addEventListener('click', dismissDescription);
+
+    // Initialize center description gesture detector
+    initCenterGestureDetector();
+}
+
+// ===== Center Gesture Detector Initialization =====
+function initCenterGestureDetector() {
+    if (!window.GestureDetector) {
+        console.warn('⚠️ GestureDetector not available');
+        return;
+    }
+
+    centerGestureDetector = new GestureDetector(centerDescription, {
+        swipeThreshold: 50, // Lower threshold for easier detection
+        onVGesture: (gesture) => {
+            console.log('✅ V gesture detected!', gesture);
+            if (!centerDescription.classList.contains('hidden')) {
+                dismissDescription();
+            }
+        },
+        onSwipe: (gesture) => {
+            console.log('👆 Swipe detected:', gesture);
+            // Allow downward swipe to dismiss
+            if (gesture.direction === 'down' && !centerDescription.classList.contains('hidden')) {
+                console.log('✅ Downward swipe confirmed - dismissing!');
+                dismissDescription();
+            }
+        }
+    });
+    console.log('🎮 Gesture detector initialized for center description');
 }
 
 // ===== Center Description Functions =====
@@ -320,25 +350,7 @@ function showCenterDescription(layerConfig) {
     // Close right panel
     infoPanel.classList.add('closed');
 
-    // Initialize gesture detector for V gesture if not already done
-    if (!centerGestureDetector && window.GestureDetector) {
-        centerGestureDetector = new GestureDetector(centerDescription, {
-            swipeThreshold: 50, // Lower threshold for easier detection
-            onVGesture: (gesture) => {
-                console.log('✅ V gesture detected!', gesture);
-                dismissDescription();
-            },
-            onSwipe: (gesture) => {
-                console.log('👆 Swipe detected:', gesture);
-                // Allow downward swipe to dismiss
-                if (gesture.direction === 'down') {
-                    console.log('✅ Downward swipe confirmed - dismissing!');
-                    dismissDescription();
-                }
-            }
-        });
-        console.log('🎮 Gesture detector initialized for center description');
-    }
+    console.log('📋 Center description shown, gesture detector should be active');
 }
 
 function dismissDescription() {

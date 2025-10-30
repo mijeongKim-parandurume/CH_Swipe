@@ -323,6 +323,27 @@ function processHandGestures(hands) {
     const centerDescription = document.getElementById('center-description');
     const isCenterDescriptionVisible = centerDescription && !centerDescription.classList.contains('hidden');
 
+    // Check if tutorial is active
+    const tutorialContainer = document.getElementById('tutorial-container');
+    const isTutorialActive = tutorialContainer && !tutorialContainer.classList.contains('hidden');
+
+    // If tutorial is active, only pass gestures to tutorial system, block all navigation/quiz
+    if (isTutorialActive) {
+        if (hands.length > 0) {
+            const hand = hands[0];
+            if (hand.gestures.length > 0) {
+                // Notify tutorial for any detected gesture
+                if (gestureCallbacks.onTutorialGesture) {
+                    for (const gesture of hand.gestures) {
+                        gestureCallbacks.onTutorialGesture(gesture, hands.length);
+                    }
+                }
+            }
+        }
+        // Block all other gesture processing during tutorial
+        return;
+    }
+
     if (hands.length === 1) {
         const hand = hands[0];
         const currentGesture = hand.gestures[0]; // Primary gesture

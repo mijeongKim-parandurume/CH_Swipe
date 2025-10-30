@@ -65,6 +65,10 @@ class TutorialSystem {
 
         // Gesture detection
         this.gestureCheckInterval = null;
+
+        // Step 3 tracking (finger counting)
+        this.step3_oneFingerDetected = false;
+        this.step3_twoFingersDetected = false;
     }
 
     init() {
@@ -82,6 +86,18 @@ class TutorialSystem {
     start() {
         this.isActive = true;
         this.currentStep = 0;
+
+        // Hide all other UI elements during tutorial
+        const infoPanel = document.getElementById('info-panel');
+        const quizContainer = document.getElementById('quiz-container');
+        const progressBar = document.querySelector('.progress-bar');
+        const seasonCTA = document.getElementById('season-cta');
+
+        if (infoPanel) infoPanel.classList.add('hidden');
+        if (quizContainer) quizContainer.classList.add('hidden');
+        if (progressBar) progressBar.style.display = 'none';
+        if (seasonCTA) seasonCTA.classList.add('hidden');
+
         this.showStep(0);
         this.startGestureDetection();
         console.log('🎓 Tutorial started');
@@ -95,6 +111,12 @@ class TutorialSystem {
 
         const step = this.steps[stepIndex];
         this.currentStep = stepIndex;
+
+        // Reset step 3 tracking when entering step 3
+        if (stepIndex === 2) {
+            this.step3_oneFingerDetected = false;
+            this.step3_twoFingersDetected = false;
+        }
 
         // Update UI
         this.stepElement.textContent = `${stepIndex + 1}/${this.steps.length}`;
@@ -123,6 +145,13 @@ class TutorialSystem {
         this.completed = true;
         this.container.classList.add('hidden');
         this.stopGestureDetection();
+
+        // Restore UI elements
+        const infoPanel = document.getElementById('info-panel');
+        const progressBar = document.querySelector('.progress-bar');
+
+        if (infoPanel) infoPanel.classList.remove('hidden');
+        if (progressBar) progressBar.style.display = '';
 
         console.log('🎉 Tutorial completed!');
 
@@ -175,10 +204,27 @@ class TutorialSystem {
 
         const step = this.steps[this.currentStep];
 
-        // Special case for step 3 (finger counting) - accept either "One finger" or "Two fingers"
-        if (this.currentStep === 2 && (gestureName === 'One finger' || gestureName === 'Two fingers')) {
-            console.log('✅ Finger counting gesture detected:', gestureName);
-            setTimeout(() => this.nextStep(), 800);
+        // Special case for step 3 (finger counting) - require BOTH gestures
+        if (this.currentStep === 2) {
+            if (gestureName === 'One finger') {
+                this.step3_oneFingerDetected = true;
+                console.log('✅ One finger detected (1/2)');
+                // Update instruction to guide user
+                this.instructionElement.textContent = '좋습니다! 이제 검지와 중지를 함께 펴세요 (2번 답변)';
+            } else if (gestureName === 'Two fingers') {
+                this.step3_twoFingersDetected = true;
+                console.log('✅ Two fingers detected (2/2)');
+                // Update instruction to guide user if they haven't done 1 finger yet
+                if (!this.step3_oneFingerDetected) {
+                    this.instructionElement.textContent = '좋습니다! 이제 검지만 펴세요 (1번 답변)';
+                }
+            }
+
+            // Both gestures detected? Move to next step
+            if (this.step3_oneFingerDetected && this.step3_twoFingersDetected) {
+                console.log('🎉 Both finger counting gestures completed!');
+                setTimeout(() => this.nextStep(), 800);
+            }
             return;
         }
 

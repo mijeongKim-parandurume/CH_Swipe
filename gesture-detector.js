@@ -123,6 +123,12 @@ class GestureDetector {
             return;
         }
 
+        // Check for swipe first (simpler and more reliable)
+        if (distance > this.options.swipeThreshold) {
+            this.analyzeSwipe(deltaX, deltaY, distance);
+            return;
+        }
+
         // Check for V gesture
         if (this.touchPath.length > 5 && duration < 1500) {
             const vResult = this.detectVGesture();
@@ -140,11 +146,6 @@ class GestureDetector {
                 return;
             }
         }
-
-        // Check for swipe
-        if (distance > this.options.swipeThreshold) {
-            this.analyzeSwipe(deltaX, deltaY, distance);
-        }
     }
 
     analyzeSwipe(deltaX, deltaY, distance) {
@@ -153,8 +154,18 @@ class GestureDetector {
         const isVertical = Math.abs(angle) > 45 && Math.abs(angle) < 135;
         const isLong = distance > this.options.longSwipeThreshold;
 
+        console.log('📊 Swipe analysis:', {
+            deltaX,
+            deltaY,
+            distance,
+            angle,
+            isHorizontal,
+            isVertical
+        });
+
         if (this.onSwipe) {
             if (isHorizontal) {
+                console.log('➡️ Horizontal swipe detected');
                 this.onSwipe({
                     type: isLong ? 'swipe-horizontal-long' : 'swipe-horizontal',
                     direction: deltaX > 0 ? 'right' : 'left',
@@ -163,6 +174,7 @@ class GestureDetector {
                     deltaY: deltaY
                 });
             } else if (isVertical) {
+                console.log('⬇️ Vertical swipe detected:', deltaY > 0 ? 'down' : 'up');
                 this.onSwipe({
                     type: 'swipe-vertical',
                     direction: deltaY > 0 ? 'down' : 'up',
@@ -275,63 +287,75 @@ class GestureDetector {
     }
 
     detectVGesture() {
-        if (this.touchPath.length < 6) return null;
+        if (this.touchPath.length < 5) return null;
 
-        // Find the turning point (lowest Y value)
-        let lowestIndex = 0;
-        let lowestY = this.touchPath[0].y;
+        const pathLength = this.touchPath.length;
+        const segmentSize = Math.floor(pathLength / 3);
 
-        for (let i = 1; i < this.touchPath.length; i++) {
-            if (this.touchPath[i].y > lowestY) {
-                lowestY = this.touchPath[i].y;
-                lowestIndex = i;
-            }
-        }
+        // Divide path into three segments: start, middle, end
+        const startSegment = this.touchPath.slice(0, segmentSize);
+        const middleSegment = this.touchPath.slice(segmentSize, segmentSize * 2);
+        const endSegment = this.touchPath.slice(segmentSize * 2);
 
-        // Need turning point in the middle (not at start or end)
-        if (lowestIndex < 2 || lowestIndex > this.touchPath.length - 3) {
+        if (startSegment.length < 2 || middleSegment.length < 2 || endSegment.length < 2) {
             return null;
         }
 
-        const start = this.touchPath[0];
-        const middle = this.touchPath[lowestIndex];
-        const end = this.touchPath[this.touchPath.length - 1];
+        // Get representative points
+        const start = startSegment[0];
+        const middle = middleSegment[Math.floor(middleSegment.length / 2)];
+        const end = endSegment[endSegment.length - 1];
 
-        // Calculate angles
+        // Calculate movement directions
         const firstLegDeltaX = middle.x - start.x;
         const firstLegDeltaY = middle.y - start.y;
         const secondLegDeltaX = end.x - middle.x;
         const secondLegDeltaY = end.y - middle.y;
 
-        // Both legs should go downward (positive Y)
-        if (firstLegDeltaY < 30 || secondLegDeltaY < 30) {
+        // Calculate distances
+        const firstLegDistance = Math.sqrt(firstLegDeltaX * firstLegDeltaX + firstLegDeltaY * firstLegDeltaY);
+        const secondLegDistance = Math.sqrt(secondLegDeltaX * secondLegDeltaX + secondLegDeltaY * secondLegDeltaY);
+
+        // Both legs should have reasonable length
+        if (firstLegDistance < 40 || secondLegDistance < 40) {
             return null;
         }
 
-        // First leg should go down-left or down-right
-        // Second leg should go in opposite direction
-        const firstLegAngle = Math.atan2(firstLegDeltaY, firstLegDeltaX) * 180 / Math.PI;
-        const secondLegAngle = Math.atan2(secondLegDeltaY, secondLegDeltaX) * 180 / Math.PI;
-
-        // Check if it forms a V shape (legs should diverge)
-        const isVShape = (firstLegDeltaX < 0 && secondLegDeltaX > 0) ||
-                         (firstLegDeltaX > 0 && secondLegDeltaX < 0);
-
-        if (!isVShape) {
+        // Both legs should go generally downward (positive Y)
+        if (firstLegDeltaY < 0 || secondLegDeltaY < 0) {
             return null;
         }
 
-        // Calculate the angle between the legs
-        const angleDiff = Math.abs(firstLegAngle - secondLegAngle);
+        // Check if it forms a V shape:
+        // First leg goes down-left (negative X) or down-right (positive X)
+        // Second leg goes in opposite horizontal direction
+        const firstGoesRight = firstLegDeltaX > 0;
+        const secondGoesRight = secondLegDeltaX > 0;
 
-        // V should have an angle between 20 and 140 degrees
-        if (angleDiff < 20 || angleDiff > 140) {
+        // They should go in opposite horizontal directions
+        if (firstGoesRight === secondGoesRight) {
             return null;
         }
+
+        // Calculate the horizontal spread
+        const horizontalSpread = Math.abs(end.x - start.x);
+        const verticalDrop = Math.max(middle.y, end.y) - start.y;
+
+        // V should have some width relative to height
+        if (horizontalSpread < 20 || verticalDrop < 30) {
+            return null;
+        }
+
+        console.log('✅ V Gesture detected:', {
+            horizontalSpread,
+            verticalDrop,
+            firstLegDistance,
+            secondLegDistance
+        });
 
         return {
-            angle: angleDiff,
-            depth: lowestY - Math.min(start.y, end.y)
+            angle: Math.atan2(verticalDrop, horizontalSpread) * 180 / Math.PI,
+            depth: verticalDrop
         };
     }
 

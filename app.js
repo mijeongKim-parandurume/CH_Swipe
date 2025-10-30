@@ -323,18 +323,21 @@ function showCenterDescription(layerConfig) {
     // Initialize gesture detector for V gesture if not already done
     if (!centerGestureDetector && window.GestureDetector) {
         centerGestureDetector = new GestureDetector(centerDescription, {
+            swipeThreshold: 50, // Lower threshold for easier detection
             onVGesture: (gesture) => {
                 console.log('✅ V gesture detected!', gesture);
                 dismissDescription();
             },
             onSwipe: (gesture) => {
-                // Also allow downward swipe to dismiss
+                console.log('👆 Swipe detected:', gesture);
+                // Allow downward swipe to dismiss
                 if (gesture.direction === 'down') {
-                    console.log('✅ Downward swipe detected!');
+                    console.log('✅ Downward swipe confirmed - dismissing!');
                     dismissDescription();
                 }
             }
         });
+        console.log('🎮 Gesture detector initialized for center description');
     }
 }
 

@@ -69,6 +69,10 @@ class TutorialSystem {
         // Step 3 tracking (finger counting)
         this.step3_oneFingerDetected = false;
         this.step3_twoFingersDetected = false;
+
+        // Gesture cooldown to prevent rapid progression
+        this.isTransitioning = false;
+        this.lastGestureTime = 0;
     }
 
     init() {
@@ -111,6 +115,9 @@ class TutorialSystem {
 
         const step = this.steps[stepIndex];
         this.currentStep = stepIndex;
+
+        // Reset transitioning flag for new step
+        this.isTransitioning = false;
 
         // Reset step 3 tracking when entering step 3
         if (stepIndex === 2) {
@@ -201,18 +208,27 @@ class TutorialSystem {
     // Called from gesture-handler.js when gesture is detected
     onGestureDetected(gestureName, handCount = 1) {
         if (!this.isActive) return;
+        if (this.isTransitioning) return; // Ignore gestures during transition
 
+        const now = Date.now();
         const step = this.steps[this.currentStep];
+
+        // Cooldown: ignore gestures within 500ms of last gesture
+        if (now - this.lastGestureTime < 500) {
+            return;
+        }
 
         // Special case for step 3 (finger counting) - require BOTH gestures
         if (this.currentStep === 2) {
-            if (gestureName === 'One finger') {
+            if (gestureName === 'One finger' && !this.step3_oneFingerDetected) {
                 this.step3_oneFingerDetected = true;
+                this.lastGestureTime = now;
                 console.log('✅ One finger detected (1/2)');
                 // Update instruction to guide user
                 this.instructionElement.textContent = '좋습니다! 이제 검지와 중지를 함께 펴세요 (2번 답변)';
-            } else if (gestureName === 'Two fingers') {
+            } else if (gestureName === 'Two fingers' && !this.step3_twoFingersDetected) {
                 this.step3_twoFingersDetected = true;
+                this.lastGestureTime = now;
                 console.log('✅ Two fingers detected (2/2)');
                 // Update instruction to guide user if they haven't done 1 finger yet
                 if (!this.step3_oneFingerDetected) {
@@ -221,23 +237,30 @@ class TutorialSystem {
             }
 
             // Both gestures detected? Move to next step
-            if (this.step3_oneFingerDetected && this.step3_twoFingersDetected) {
+            if (this.step3_oneFingerDetected && this.step3_twoFingersDetected && !this.isTransitioning) {
+                this.isTransitioning = true;
                 console.log('🎉 Both finger counting gestures completed!');
-                setTimeout(() => this.nextStep(), 800);
+                setTimeout(() => this.nextStep(), 1000);
             }
             return;
         }
 
         // Check if gesture matches requirement
-        if (step.requiredGesture && gestureName === step.requiredGesture) {
+        if (step.requiredGesture && gestureName === step.requiredGesture && !this.isTransitioning) {
+            this.isTransitioning = true;
+            this.lastGestureTime = now;
             console.log('✅ Correct gesture detected:', gestureName);
-            setTimeout(() => this.nextStep(), 800);
+            setTimeout(() => this.nextStep(), 1000);
+            return;
         }
 
         // Check for two hands
-        if (step.requiresTwoHands && handCount === 2) {
+        if (step.requiresTwoHands && handCount === 2 && !this.isTransitioning) {
+            this.isTransitioning = true;
+            this.lastGestureTime = now;
             console.log('✅ Two hands detected');
-            setTimeout(() => this.nextStep(), 800);
+            setTimeout(() => this.nextStep(), 1000);
+            return;
         }
     }
 

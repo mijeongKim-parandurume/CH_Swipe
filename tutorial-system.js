@@ -29,7 +29,7 @@ class TutorialSystem {
                 icon: '☝️',
                 title: '퀴즈 정답 선택',
                 text: '퀴즈의 정답을 제스처로 선택합니다',
-                instruction: '1번이 정답이면 검지만 펴고, 2번이 정답이면 검지와 중지를 펴세요',
+                instruction: '1번이 정답이면 ☝️ 검지만 펴고, 2번이 정답이면 ✌️ 검지와 중지를 펴세요',
                 requiredGesture: 'One finger' // or 'Two fingers'
             },
             {
@@ -47,7 +47,8 @@ class TutorialSystem {
                 requiresTwoHands: true
             },
             {
-                icon: '👍',
+                icon: 'assets/imgs/thumbs-up-gesture.png',
+                iconType: 'image',
                 title: '스와이프 이동',
                 text: '엄지손가락으로 방향을 가리키세요',
                 instruction: '나머지 손가락은 접고, 엄지로 오른쪽을 가리키면 다음 단계로 이동합니다',
@@ -62,6 +63,7 @@ class TutorialSystem {
         this.titleElement = null;
         this.textElement = null;
         this.instructionElement = null;
+        this.skipButton = null;
 
         // Gesture detection
         this.gestureCheckInterval = null;
@@ -73,6 +75,10 @@ class TutorialSystem {
         // Gesture cooldown to prevent rapid progression
         this.isTransitioning = false;
         this.lastGestureTime = 0;
+
+        // Skip gesture tracking (both hands forming X)
+        this.skipGestureHoldTime = 0;
+        this.skipGestureRequired = 1000; // 1 second hold
     }
 
     init() {
@@ -83,6 +89,15 @@ class TutorialSystem {
         this.titleElement = document.getElementById('tutorial-title');
         this.textElement = document.getElementById('tutorial-text');
         this.instructionElement = document.getElementById('tutorial-instruction');
+        this.skipButton = document.getElementById('tutorial-skip-btn');
+
+        // Setup skip button click event
+        if (this.skipButton) {
+            this.skipButton.addEventListener('click', () => {
+                console.log('🚫 Tutorial skipped via button');
+                this.skip();
+            });
+        }
 
         console.log('✅ Tutorial system initialized');
     }
@@ -97,12 +112,14 @@ class TutorialSystem {
         const progressBar = document.querySelector('.progress-bar');
         const seasonCTA = document.getElementById('season-cta');
         const canvas = document.getElementById('canvas');
+        const controlsHint = document.getElementById('controls-hint');
 
         if (infoPanel) infoPanel.classList.add('hidden');
         if (quizContainer) quizContainer.classList.add('hidden');
         if (progressBar) progressBar.style.display = 'none';
         if (seasonCTA) seasonCTA.classList.add('hidden');
         if (canvas) canvas.style.display = 'none'; // Hide 3D canvas during tutorial
+        if (controlsHint) controlsHint.classList.add('hidden'); // Hide controls hint during tutorial
 
         this.showStep(0);
         this.startGestureDetection();
@@ -129,7 +146,14 @@ class TutorialSystem {
 
         // Update UI
         this.stepElement.textContent = `${stepIndex + 1}/${this.steps.length}`;
-        this.iconElement.textContent = step.icon;
+
+        // Check if icon is an image or emoji
+        if (step.iconType === 'image') {
+            this.iconElement.innerHTML = `<img src="${step.icon}" alt="${step.title}" style="width: 80px; height: 80px; object-fit: contain;">`;
+        } else {
+            this.iconElement.textContent = step.icon;
+        }
+
         this.titleElement.textContent = step.title;
         this.textElement.textContent = step.text;
         this.instructionElement.textContent = step.instruction;
@@ -246,6 +270,8 @@ class TutorialSystem {
                 console.log('✅ One finger detected (1/2)');
                 // Update instruction to guide user
                 this.instructionElement.textContent = '좋습니다! 이제 검지와 중지를 함께 펴세요 (2번 답변)';
+                // Change icon to victory gesture
+                this.iconElement.textContent = '✌️';
             } else if (gestureName === 'Two fingers' && !this.step3_twoFingersDetected) {
                 this.step3_twoFingersDetected = true;
                 this.lastGestureTime = now;

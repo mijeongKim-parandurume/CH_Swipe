@@ -358,28 +358,21 @@ function processHandGestures(hands) {
         }
 
         // === PRIORITY: Victory gesture for center description ===
-        if (hand.gestures.includes('Victory') && gestureHoldTime > 300) {
-            if (isCenterDescriptionVisible && gestureCallbacks.onVictory) {
+        // But first check: if center description is visible, automatically dismiss it
+        if (isCenterDescriptionVisible && gestureHoldTime > 300) {
+            if (hand.gestures.includes('Victory') && gestureCallbacks.onVictory) {
                 console.log('✌️ Hand gesture: Victory (hold: ' + gestureHoldTime + 'ms) → Dismiss center description');
                 gestureCallbacks.onVictory();
                 gestureStartTime = Date.now(); // Reset to avoid repeat
                 return; // Stop processing other gestures
             }
-
-            // Notify tutorial system about Victory gesture
-            if (gestureCallbacks.onTutorialGesture) {
-                gestureCallbacks.onTutorialGesture('Victory', 1);
-                gestureStartTime = Date.now();
-            }
         } else if (hand.gestures.includes('Victory') && gestureHoldTime <= 300 && isCenterDescriptionVisible) {
             console.log('⏳ Victory detected but hold time too short: ' + gestureHoldTime + 'ms (need > 300ms)');
-        }
-
-        // If center description is visible, ignore all other gestures
-        if (isCenterDescriptionVisible) {
-            console.log('⚠️ Center description visible, ignoring other gestures');
             return;
         }
+
+        // Note: Removed the blocking of all gestures when center description is visible
+        // This allows quiz gestures to work even if description wasn't closed properly
 
         // === QUIZ GESTURES ===
 
@@ -410,19 +403,46 @@ function processHandGestures(hands) {
             }
         }
 
-        // Check for finger counting gestures (for quiz)
+        // Check for finger counting gestures (for quiz and tutorial)
+        // One finger (검지만) → 퀴즈 1번 답변
         if (hand.gestures.includes('One finger') && gestureHoldTime > 500) {
             // Notify tutorial system
             if (gestureCallbacks.onTutorialGesture) {
                 gestureCallbacks.onTutorialGesture('One finger', 1);
             }
+            // Notify quiz system
+            if (gestureCallbacks.onQuizSwipe) {
+                console.log('☝️ One finger detected → Quiz system');
+                gestureCallbacks.onQuizSwipe({
+                    type: 'One finger',
+                    direction: 'one',
+                    distance: 0,
+                    deltaX: 0,
+                    deltaY: 0
+                });
+            }
+            gestureStartTime = Date.now(); // Reset
         }
 
-        if (hand.gestures.includes('Two fingers') && gestureHoldTime > 500) {
+        // Victory/Two fingers (검지+중지) → 퀴즈 2번 답변
+        // Note: Victory and Two fingers are the same gesture in MediaPipe
+        if ((hand.gestures.includes('Two fingers') || hand.gestures.includes('Victory')) && gestureHoldTime > 500) {
             // Notify tutorial system
             if (gestureCallbacks.onTutorialGesture) {
                 gestureCallbacks.onTutorialGesture('Two fingers', 1);
             }
+            // Notify quiz system (send as "Two fingers" for consistency)
+            if (gestureCallbacks.onQuizSwipe) {
+                console.log('✌️ Victory/Two fingers detected → Quiz system (answer 2)');
+                gestureCallbacks.onQuizSwipe({
+                    type: 'Two fingers',
+                    direction: 'two',
+                    distance: 0,
+                    deltaX: 0,
+                    deltaY: 0
+                });
+            }
+            gestureStartTime = Date.now(); // Reset
         }
 
         // 3. Pointing gesture - DISABLED for navigation, only for quiz

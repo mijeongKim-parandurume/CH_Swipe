@@ -362,6 +362,7 @@ body, html {
     align-items: center;
     width: 100%;
     margin-bottom: 0.5rem;
+    position: relative;
 }
 
 .tutorial-badge {
@@ -375,9 +376,44 @@ body, html {
 }
 
 .tutorial-step {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     color: var(--color-text-dim);
     font-size: 1rem;
     font-weight: 600;
+}
+
+.tutorial-skip-btn {
+    position: absolute;
+    top: -1rem;
+    right: -1rem;
+    background: rgba(255, 70, 70, 0.9);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(255, 70, 70, 0.4);
+    z-index: 10;
+}
+
+.tutorial-skip-btn:hover {
+    background: rgba(255, 50, 50, 1);
+    transform: scale(1.1);
+    box-shadow: 0 6px 18px rgba(255, 70, 70, 0.6);
+}
+
+.tutorial-skip-btn:active {
+    transform: scale(0.95);
 }
 
 .tutorial-icon {
@@ -421,6 +457,13 @@ body, html {
     border: 2px solid #ffaa44;
     border-radius: 12px;
     margin-top: 1rem;
+}
+
+.tutorial-skip-hint {
+    font-size: 0.9rem;
+    color: var(--color-text-dim);
+    opacity: 0.7;
+    margin-top: 0.5rem;
 }
 
 /* ===== Center Description Container ===== */
@@ -551,7 +594,44 @@ body, html {
 .quiz-question {
     font-size: 1.3rem;
     color: var(--color-accent);
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.quiz-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(74, 158, 255, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.quiz-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(74, 158, 255, 0.6);
+}
+
+.option-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    min-width: 30px;
+}
+
+.option-text {
+    font-size: 1.1rem;
+    color: var(--color-text);
     line-height: 1.4;
 }
 

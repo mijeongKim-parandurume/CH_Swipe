@@ -23,6 +23,8 @@ class QuizSystem {
         // UI elements
         this.quizContainer = null;
         this.questionElement = null;
+        this.option1Element = null;
+        this.option2Element = null;
         this.hintElement = null;
         this.feedbackElement = null;
 
@@ -38,6 +40,8 @@ class QuizSystem {
     init(elements) {
         this.quizContainer = elements.quizContainer;
         this.questionElement = elements.questionElement;
+        this.option1Element = document.getElementById('quiz-option1-text');
+        this.option2Element = document.getElementById('quiz-option2-text');
         this.hintElement = elements.hintElement;
         this.feedbackElement = elements.feedbackElement;
         this.canvasElement = elements.canvasElement;
@@ -87,6 +91,13 @@ class QuizSystem {
 
         this.quizContainer.classList.remove('hidden');
         this.questionElement.textContent = this.currentQuiz.question;
+
+        // Show options for finger-count quiz
+        if (this.currentQuiz.option1 && this.currentQuiz.option2) {
+            this.option1Element.textContent = this.currentQuiz.option1;
+            this.option2Element.textContent = this.currentQuiz.option2;
+        }
+
         this.hintElement.textContent = this.currentQuiz.gestureHint;
         this.feedbackElement.textContent = '';
         this.feedbackElement.className = 'quiz-feedback';
@@ -156,6 +167,15 @@ class QuizSystem {
 
         // Special cases
         switch (expected) {
+            case 'finger-count':
+                // For finger-count quiz, check if detected is One finger or Two fingers
+                // and compare with correctAnswer
+                if (detected === 'One finger') {
+                    return this.currentQuiz.correctAnswer === 1;
+                } else if (detected === 'Two fingers') {
+                    return this.currentQuiz.correctAnswer === 2;
+                }
+                return false;
             case 'pinch':
                 return detected === 'pinch';
             case 'tap':

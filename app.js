@@ -385,8 +385,11 @@ function dismissDescription() {
     infoPanel.classList.remove('hidden');
     infoPanel.classList.remove('closed');
 
-    // Show quiz container
-    showQuizForCurrentStage();
+    // Show quiz container after 3 seconds
+    console.log('⏱️ Quiz will appear in 3 seconds...');
+    setTimeout(() => {
+        showQuizForCurrentStage();
+    }, 3000);
 }
 
 function showQuizForCurrentStage() {
@@ -1185,7 +1188,13 @@ function handleHandGestureSwipe(gesture) {
     }
 
     console.log('👆 Hand gesture SWIPE received for quiz:', gesture);
-    quizSystem.handleSwipe(gesture);
+
+    // Check if this is a finger-count gesture (for 2-choice quiz)
+    if (gesture.type === 'One finger' || gesture.type === 'Two fingers') {
+        quizSystem.checkGesture(gesture.type);
+    } else {
+        quizSystem.handleSwipe(gesture);
+    }
 }
 
 function handleHandGestureCircle(gesture) {

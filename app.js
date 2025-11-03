@@ -87,13 +87,7 @@ async function init() {
         // Initialize Three.js
         initThreeJS();
 
-        // Load all GLB models
-        await loadAllModels();
-
-        // Initialize Quiz System
-        initQuizSystem();
-
-        // Initialize Tutorial System
+        // Initialize Tutorial System first (before loading models)
         initTutorialSystem();
 
         // Setup event listeners
@@ -102,15 +96,10 @@ async function init() {
         // Hide loading screen, show app
         hideLoadingScreen();
 
-        // Show first stage
-        showStage(1);
-
-        // Start tutorial after a brief delay
-        setTimeout(() => {
-            if (tutorialSystem) {
-                tutorialSystem.start();
-            }
-        }, 1000);
+        // Start tutorial immediately (models will load after tutorial)
+        if (tutorialSystem) {
+            tutorialSystem.start();
+        }
 
         // Auto-hide controls hint after 5 seconds
         setTimeout(() => {
@@ -461,12 +450,26 @@ function initTutorialSystem() {
     tutorialSystem.init();
 
     // Set up callback for tutorial completion
-    tutorialSystem.onComplete = () => {
-        console.log('🎉 Tutorial completed! Main experience ready.');
-        // Auto-enable gesture tracking if not already enabled
-        if (!isGestureEnabled) {
-            gestureToggle.click();
-        }
+    tutorialSystem.onComplete = async () => {
+        console.log('🎉 Tutorial completed! Loading main experience...');
+
+        // Show loading screen again
+        loadingScreen.classList.remove('hidden');
+        updateLoadingText('천문도를 불러오는 중...');
+
+        // Load all GLB models
+        await loadAllModels();
+
+        // Initialize Quiz System
+        initQuizSystem();
+
+        // Hide loading screen
+        loadingScreen.classList.add('hidden');
+
+        // Show first stage
+        showStage(1);
+
+        console.log('✅ Main experience ready!');
     };
 
     console.log('✅ TutorialSystem initialized');

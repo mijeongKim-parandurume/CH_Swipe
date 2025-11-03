@@ -423,22 +423,14 @@ function processHandGestures(hands) {
             }
         }
 
-        // 3. Pointing gesture for swipe (both navigation and quiz)
+        // 3. Pointing gesture - DISABLED for navigation, only for quiz
         if (hand.gestures.includes('Pointing')) {
             // Notify tutorial system about Pointing gesture
             if (gestureCallbacks.onTutorialGesture) {
                 gestureCallbacks.onTutorialGesture('Pointing', 1);
             }
 
-            // Invert direction: left-to-right = positive (next), right-to-left = negative (prev)
-            const swipeDelta = (hand.prevX - hand.x) * 2;
-
-            // For navigation
-            if (gestureCallbacks.onSwipe) {
-                gestureCallbacks.onSwipe(swipeDelta);
-            }
-
-            // For quiz (detect significant horizontal movement)
+            // For quiz only (detect significant horizontal movement)
             const horizontalMovement = Math.abs(hand.x - hand.prevX);
             if (horizontalMovement > 0.05 && gestureCallbacks.onQuizSwipe) {
                 const direction = (hand.x - hand.prevX) > 0 ? 'right' : 'left';
@@ -452,10 +444,10 @@ function processHandGestures(hands) {
                 });
             }
 
-            isSwipe = true;
+            // Pointing does NOT trigger stage navigation anymore
         }
 
-        // 4. Thumbs up gesture for directional swipe
+        // 4. Thumbs up gesture for directional stage navigation
         if (hand.gestures.includes('Thumbs up')) {
             // Notify tutorial system about Thumbs up gesture
             if (gestureCallbacks.onTutorialGesture) {
@@ -464,15 +456,15 @@ function processHandGestures(hands) {
 
             // Check thumb direction for navigation
             if (hand.gestures.includes('Thumbs up right')) {
-                // Thumb pointing right → swipe right (next stage)
+                // Thumb pointing right → next stage
                 if (gestureCallbacks.onSwipe) {
-                    gestureCallbacks.onSwipe(0.5); // Positive for right
+                    gestureCallbacks.onSwipe(2.0); // Strong positive swipe for next stage
                 }
                 console.log('👍 Thumbs up pointing right → Next stage');
             } else if (hand.gestures.includes('Thumbs up left')) {
-                // Thumb pointing left → swipe left (previous stage)
+                // Thumb pointing left → previous stage
                 if (gestureCallbacks.onSwipe) {
-                    gestureCallbacks.onSwipe(-0.5); // Negative for left
+                    gestureCallbacks.onSwipe(-2.0); // Strong negative swipe for previous stage
                 }
                 console.log('👍 Thumbs up pointing left → Previous stage');
             }

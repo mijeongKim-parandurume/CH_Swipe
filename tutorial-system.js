@@ -96,11 +96,13 @@ class TutorialSystem {
         const quizContainer = document.getElementById('quiz-container');
         const progressBar = document.querySelector('.progress-bar');
         const seasonCTA = document.getElementById('season-cta');
+        const canvas = document.getElementById('canvas');
 
         if (infoPanel) infoPanel.classList.add('hidden');
         if (quizContainer) quizContainer.classList.add('hidden');
         if (progressBar) progressBar.style.display = 'none';
         if (seasonCTA) seasonCTA.classList.add('hidden');
+        if (canvas) canvas.style.display = 'none'; // Hide 3D canvas during tutorial
 
         this.showStep(0);
         this.startGestureDetection();
@@ -156,9 +158,11 @@ class TutorialSystem {
         // Restore UI elements
         const infoPanel = document.getElementById('info-panel');
         const progressBar = document.querySelector('.progress-bar');
+        const canvas = document.getElementById('canvas');
 
         if (infoPanel) infoPanel.classList.remove('hidden');
         if (progressBar) progressBar.style.display = '';
+        if (canvas) canvas.style.display = ''; // Show 3D canvas after tutorial
 
         console.log('🎉 Tutorial completed!');
 
@@ -184,13 +188,15 @@ class TutorialSystem {
 
     checkStepComplete() {
         if (!this.isActive) return;
+        if (this.isTransitioning) return; // Don't check during transition
 
         const step = this.steps[this.currentStep];
 
         // Special check for step 0 (gesture tracking activation)
         if (step.checkComplete && step.checkComplete()) {
+            this.isTransitioning = true; // Prevent multiple calls
             console.log('✅ Step completed:', step.title);
-            setTimeout(() => this.nextStep(), 500);
+            setTimeout(() => this.nextStep(), 1000);
             return;
         }
 

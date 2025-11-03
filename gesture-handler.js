@@ -454,19 +454,19 @@ function processHandGestures(hands) {
                 gestureCallbacks.onTutorialGesture('Thumbs up', 1);
             }
 
-            // Check thumb direction for navigation
-            if (hand.gestures.includes('Thumbs up right')) {
-                // Thumb pointing right → next stage
+            // Check thumb direction for navigation (REVERSED: left=next, right=prev)
+            if (hand.gestures.includes('Thumbs up left')) {
+                // Thumb pointing left → next stage
                 if (gestureCallbacks.onSwipe) {
                     gestureCallbacks.onSwipe(2.0); // Strong positive swipe for next stage
                 }
-                console.log('👍 Thumbs up pointing right → Next stage');
-            } else if (hand.gestures.includes('Thumbs up left')) {
-                // Thumb pointing left → previous stage
+                console.log('👍 Thumbs up pointing left → Next stage');
+            } else if (hand.gestures.includes('Thumbs up right')) {
+                // Thumb pointing right → previous stage
                 if (gestureCallbacks.onSwipe) {
                     gestureCallbacks.onSwipe(-2.0); // Strong negative swipe for previous stage
                 }
-                console.log('👍 Thumbs up pointing left → Previous stage');
+                console.log('👍 Thumbs up pointing right → Previous stage');
             }
 
             isSwipe = true;

@@ -23,6 +23,9 @@ let progress = 0;
 let isAnimating = false;
 let direction = 1;
 
+// Track visited stages (to prevent re-showing description/quiz)
+const visitedStages = new Set();
+
 // ===== Swipe Gesture =====
 let touchStartX = 0;
 let touchStartY = 0;
@@ -1243,16 +1246,35 @@ function showStage(stage) {
     // Update UI
     updateUI();
 
-    // Reset description dismissed state
-    isDescriptionDismissed = false;
+    // Check if this stage has been visited before
+    const isFirstVisit = !visitedStages.has(stage);
 
-    // Hide quiz container
-    quizContainer.classList.add('hidden');
+    if (isFirstVisit) {
+        // First visit: show description and quiz
+        visitedStages.add(stage);
 
-    // Show center description after animation delay
-    setTimeout(() => {
-        showCenterDescription(layerConfig);
-    }, config.animation.panelDelay);
+        // Reset description dismissed state
+        isDescriptionDismissed = false;
+
+        // Hide quiz container initially
+        quizContainer.classList.add('hidden');
+
+        // Show center description after animation delay
+        setTimeout(() => {
+            showCenterDescription(layerConfig);
+        }, config.animation.panelDelay);
+    } else {
+        // Already visited: skip description and quiz, just show info panel
+        console.log(`📌 Stage ${stage} already visited, skipping description and quiz`);
+
+        // Update panel with content
+        panelTitle.textContent = layerConfig.title;
+        panelDescription.textContent = layerConfig.description;
+
+        // Show info panel directly
+        infoPanel.classList.remove('hidden');
+        infoPanel.classList.remove('closed');
+    }
 }
 
 function hideStage(stage) {

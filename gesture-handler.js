@@ -358,9 +358,9 @@ function processHandGestures(hands) {
         }
 
         // === PRIORITY: Victory gesture for center description ===
-        if (hand.gestures.includes('Victory') && gestureHoldTime > 500) {
+        if (hand.gestures.includes('Victory') && gestureHoldTime > 300) {
             if (isCenterDescriptionVisible && gestureCallbacks.onVictory) {
-                console.log('✌️ Hand gesture: Victory → Dismiss center description');
+                console.log('✌️ Hand gesture: Victory (hold: ' + gestureHoldTime + 'ms) → Dismiss center description');
                 gestureCallbacks.onVictory();
                 gestureStartTime = Date.now(); // Reset to avoid repeat
                 return; // Stop processing other gestures
@@ -371,6 +371,8 @@ function processHandGestures(hands) {
                 gestureCallbacks.onTutorialGesture('Victory', 1);
                 gestureStartTime = Date.now();
             }
+        } else if (hand.gestures.includes('Victory') && gestureHoldTime <= 300 && isCenterDescriptionVisible) {
+            console.log('⏳ Victory detected but hold time too short: ' + gestureHoldTime + 'ms (need > 300ms)');
         }
 
         // If center description is visible, ignore all other gestures

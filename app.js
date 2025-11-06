@@ -1211,6 +1211,12 @@ function handleHandGestureCircle(gesture) {
 function goToStage(stage) {
     if (stage === currentStage || isAnimating) return;
 
+    // Block stage navigation if models haven't loaded yet
+    if (layers.length === 0) {
+        console.log('Cannot change stage: Models not loaded yet');
+        return;
+    }
+
     // Block stage navigation if quiz is active
     if (quizSystem && quizSystem.isQuizActive) {
         console.log('Cannot change stage: Quiz is active');
@@ -1234,10 +1240,17 @@ function goToStage(stage) {
 function showStage(stage) {
     console.log(`🎬 Showing stage ${stage}...`);
 
+    const layerIndex = stage - 1;
+
+    // Safety check: ensure layer exists
+    if (!layers[layerIndex]) {
+        console.error(`❌ Cannot show stage ${stage}: Layer not loaded yet`);
+        return;
+    }
+
     isAnimating = true;
     currentStage = stage;
 
-    const layerIndex = stage - 1;
     const layer = layers[layerIndex];
     const layerConfig = config.layers[layerIndex];
 
@@ -1288,6 +1301,13 @@ function showStage(stage) {
 
 function hideStage(stage) {
     const layerIndex = stage - 1;
+
+    // Safety check: ensure layer exists
+    if (!layers[layerIndex]) {
+        console.error(`❌ Cannot hide stage ${stage}: Layer not loaded yet`);
+        return;
+    }
+
     const layer = layers[layerIndex];
     const layerConfig = config.layers[layerIndex];
 

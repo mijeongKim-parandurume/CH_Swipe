@@ -9,6 +9,9 @@
 
     <!-- Preload critical assets -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
@@ -32,6 +35,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
+    <!-- Intro Screen -->
+    <div id="intro-screen" class="intro-screen">
+        <canvas id="intro-starfield"></canvas>
+        <div class="intro-content">
+            <div class="intro-line" data-line="1">아주 오래전부터, 하늘에는 수많은 별들이 반짝였다.</div>
+            <div class="intro-line" data-line="2">사람들은 그 별들 속에서 계절과 방향을 읽었다.</div>
+            <div class="intro-line" data-line="3">조선의 학자들은 생각했다. “이 아름다운 하늘을 모두 기록할 수는 없을까?”</div>
+            <div class="intro-line" data-line="4">그래서 1395년, 돌 위에 하늘을 새겼다.</div>
+            <div class="intro-line emphasis" data-line="5">그것이 바로 '천상열차분야지도'</div>
+            <div class="intro-line" data-line="6">1,400개가 넘는 별을 하나하나 새겨 넣고, 하늘의 움직임을 담았다.</div>
+            <div class="intro-line" data-line="7">왕이 하늘을 보고 계절을 알리는 데 쓰였던, 아주 소중한 하늘의 지도</div>
+            <div class="intro-line" data-line="8">그리고 오늘, 그 옛날 하늘을 다시 디지털로 펼쳐보자.</div>
+            <button class="intro-start-button" id="intro-start-button">별을 이어보기 ▶</button>
+        </div>
+    </div>
+
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
@@ -230,6 +249,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="intro.js"></script>
     <script src="gesture-detector.js"></script>
     <script src="feedback-effects.js"></script>
     <script src="quiz-system.js"></script>
